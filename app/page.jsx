@@ -4,7 +4,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 // supabase auth tied to spotify provider auth
 export default function Home() {
   const supabase = createClientComponentClient()
-  const REDIRECT_URL = 'https://spotify-notes.vercel.app/home'
+  const REDIRECT_URL = 'https://jjalymelerhbyeppemio.supabase.co/auth/v1/callback'
 
   async function spotifyLogin(sb) {
     console.log('authorizing user via supabase + spotify...')
@@ -15,6 +15,7 @@ export default function Home() {
         redirectTo: {REDIRECT_URL}
       }
     })
+
 
   }
   //redirects user to /home
