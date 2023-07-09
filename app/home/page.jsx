@@ -121,6 +121,7 @@ export default function Home() {
   }, [trackURL]);
 
   // returns an array of the most recently finished spotify song
+  // NOTE: may remove entirely, has inconvenient effects on note auto-load behavior
   async function queryRecentlyPlayed() {
     try {
       const response = await getrecentlyplayed(accessToken.current);
