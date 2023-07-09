@@ -1,11 +1,17 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { gettrack, playtrack, pausetrack, getplaybackstate, getrecentlyplayed, skipPrevious, skipNext } from "../../util/trackutils";
+import {
+  gettrack,
+  playtrack,
+  pausetrack,
+  getplaybackstate,
+  getrecentlyplayed,
+  skipPrevious,
+  skipNext,
+} from "../../util/trackutils";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { debounce } from "lodash";
 import DOMPurify from "dompurify";
-import Router from 'next/router';
-
 
 export default function Home() {
   const supabase = createClientComponentClient();
@@ -14,23 +20,24 @@ export default function Home() {
   const [artist, setArtist] = useState("");
   const [imageURL, setImageURL] = useState("");
   const [loadingNote, setLoadingNote] = useState("");
-  
+
   const [isPlaying, setIsPlaying] = useState(false); //tracks whether user is playing music from spotify
   const accessToken = useRef(null);
-  const userID = useRef(null)
+  const userID = useRef(null);
   const trackID = useRef(""); //change on search by URL or ID
 
   const currNote = useRef("");
 
-// TODO decompose to misc utils
-  const delay = (duration) => new Promise((resolve) => setTimeout(resolve, duration));
+  // TODO decompose to misc utils
+  const delay = (duration) =>
+    new Promise((resolve) => setTimeout(resolve, duration));
 
   //get & store supabase and spotify session data
   useEffect(() => {
     async function getSession() {
       const { data } = await supabase.auth.getSession();
       accessToken.current = data.session.provider_token; //store spotify access token
-      userID.current = data.session.user.id //store supabase user ID
+      userID.current = data.session.user.id; //store supabase user ID
       console.log("saving the following token: ", accessToken.current);
     }
     getSession();
@@ -40,102 +47,98 @@ export default function Home() {
   const debouncedSave = useCallback(
     debounce((uid, tid, note) => {
       saveNote({ user_id: uid, track_id: tid, note: note });
-    }, 500
-    ),[]);
+    }, 500),
+    []
+  );
 
   // force user back to login screen to refresh spotify token
   function reauthenticateUser() {
     // Router.push('/');
     window.location.href = "/";
-
   }
-
 
   // update play button view and handle showing currently playing song if search box is empty
   // TODO decompose better; probably make a 'updateplaybutton'
   const queryPlaybackState = async () => {
-      try {
-          const response = await getplaybackstate(accessToken.current)
-          if(response) {
-            if(response.status == 204) {
-                setIsPlaying(false)
-            }
-            else {
-                setIsPlaying(response.data.is_playing)
-            }
-            return response.data
-          }
+    try {
+      const response = await getplaybackstate(accessToken.current);
+      if (response) {
+        if (response.status == 204) {
+          setIsPlaying(false);
+        } else {
+          setIsPlaying(response.data.is_playing);
+        }
+        return response.data;
       }
-      catch(error){
-          if (error.response.status == 401) {
-              reauthenticateUser()
-          }
-          setIsPlaying(false) //if we dont know, default to play button
-          console.log(error)
+    } catch (error) {
+      if (error.response.status == 401) {
+        reauthenticateUser();
       }
-  }
+      setIsPlaying(false); //if we dont know, default to play button
+      console.log(error);
+    }
+  };
 
   // recurring spotify query for:
   // 1. playback state
   // 2. recently played <-- commented this out for now
   // TODO decompose, probably make into 'updatetrackdisplay'
-  useEffect(()=>{
+  useEffect(() => {
     let querySpotify = async () => {
-        const playbackData = await queryPlaybackState();
-        // const recentlyPlayedData = await queryRecentlyPlayed();
+      const playbackData = await queryPlaybackState();
+      // const recentlyPlayedData = await queryRecentlyPlayed();
 
-        // handle 'show current/recent song if search box empty'
-        if (!trackURL) {
-          let tid;
-          // extract trackIDs from the responses
-          const playbackDataID = playbackData?.item?.id
-          // const recentlyPlayedDataID = recentlyPlayedData?.length > 0 ? recentlyPlayedData[0]?.track?.id : undefined
+      // handle 'show current/recent song if search box empty'
+      if (!trackURL) {
+        let tid;
+        // extract trackIDs from the responses
+        const playbackDataID = playbackData?.item?.id;
+        // const recentlyPlayedDataID = recentlyPlayedData?.length > 0 ? recentlyPlayedData[0]?.track?.id : undefined
 
-          // reload track view, priority to currently playing track
-          if(playbackDataID) {
-            if (trackID.current != playbackDataID) {
-              tid = playbackDataID
-            }
+        // reload track view, priority to currently playing track
+        if (playbackDataID) {
+          if (trackID.current != playbackDataID) {
+            tid = playbackDataID;
           }
-          // else if (recentlyPlayedDataID) {
-          //   if(trackID.current != recentlyPlayedDataID) {
-          //     tid = recentlyPlayedDataID
-          //   }
-          // }
-          if (tid) handleGetTrackFromID(tid)
+        }
+        // else if (recentlyPlayedDataID) {
+        //   if(trackID.current != recentlyPlayedDataID) {
+        //     tid = recentlyPlayedDataID
+        //   }
+        // }
+        if (tid) handleGetTrackFromID(tid);
       }
 
       // use recursion to avoid stale closure
       await delay(1000);
-      querySpotify()
-  };
+      querySpotify();
+    };
 
-  // start loop over upon trackURL change
-  querySpotify();
+    // start loop over upon trackURL change
+    querySpotify();
 
-  // clean up upon unmount of trackURL change
-  return () => {
-    querySpotify = () => {};
-  }
+    // clean up upon unmount of trackURL change
+    return () => {
+      querySpotify = () => {};
+    };
+  }, [trackURL]);
 
-},[trackURL]);
-
-// returns an array of the most recently finished spotify song
+  // returns an array of the most recently finished spotify song
   async function queryRecentlyPlayed() {
     try {
-      const response = await getrecentlyplayed(accessToken.current)
+      const response = await getrecentlyplayed(accessToken.current);
       if (response?.data?.items) {
         //extract trackID
-          return response.data.items
+        return response.data.items;
       }
-    } catch(error) {
-        if (error.response.status == 401) {
-            reauthenticateUser()
-        }
-      console.log(error)
+    } catch (error) {
+      if (error.response.status == 401) {
+        reauthenticateUser();
+      }
+      console.log(error);
     }
   }
- 
+
   const debouncedSearch = useCallback(
     debounce((trackURL) => {
       handleSearch(trackURL);
@@ -143,7 +146,7 @@ export default function Home() {
     []
   );
 
-  // use searchbox for search 
+  // use searchbox for search
   useEffect(() => {
     // search 500ms after last keystroke
     debouncedSearch(trackURL);
@@ -173,8 +176,8 @@ export default function Home() {
         console.log("successfully got note from database, it is: ", data.note);
       }
     } catch (error) {
-        console.log("hi there, we got an error. Heres the error below : ");
-        console.log(error);
+      console.log("hi there, we got an error. Heres the error below : ");
+      console.log(error);
     } finally {
       setLoadingNote(false);
     }
@@ -187,10 +190,10 @@ export default function Home() {
     setArtist("");
     setSongName("");
     setImageURL("");
-    currNote.current = ""
+    currNote.current = "";
 
-    trackID.current = tid
-    if(!accessToken.current) return; //wait until we've gotten an access token post-login
+    trackID.current = tid;
+    if (!accessToken.current) return; //wait until we've gotten an access token post-login
     try {
       const response = await gettrack(tid, accessToken.current);
       setSongName(response.data.name);
@@ -202,12 +205,11 @@ export default function Home() {
       setArtist(artistsString);
       setImageURL(response.data.album.images[0].url);
       await getNote(tid);
-  }
-  catch(error) {
-      console.log('error: failed to get track ', tid)
-      console.log(error)
+    } catch (error) {
+      console.log("error: failed to get track ", tid);
+      console.log(error);
       if (error.response.status == 401) {
-          reauthenticateUser()
+        reauthenticateUser();
       }
       // // if we fail to get the track in any way, reset the view to empty;
       // trackID.current = ""; //reset trackID to null
@@ -215,32 +217,32 @@ export default function Home() {
       // setSongName("");
       // setImageURL("");
       // currNote.current = ""
-  }
+    }
   }
 
   // reset view, extract track from URL
   function handleSearch(turl) {
     // reset trackID to safeguard current note from being overwritten
     trackID.current = "";
-    
+
     setArtist("");
     setSongName("");
     setImageURL("");
-    currNote.current = ""
+    currNote.current = "";
 
     const reg = turl.match(/spotify.com\/track\/([a-zA-Z0-9]+)\?.*$/);
     if (reg?.[1]) {
-        const tid = reg?.[1];
-        trackID.current = tid;
-        console.log("found following trackID: ", tid);
-        handleGetTrackFromID(tid)
+      const tid = reg?.[1];
+      trackID.current = tid;
+      console.log("found following trackID: ", tid);
+      handleGetTrackFromID(tid);
+    }
   }
-}
 
   async function handlePlay() {
     try {
       await playtrack(trackID.current, 0, accessToken.current);
-    //   setIsPlaying(true)
+      //   setIsPlaying(true)
     } catch (error) {
       if (error.response.status == 403) {
         alert("Device inaccessible; please change your Spotify output device.");
@@ -254,14 +256,13 @@ export default function Home() {
   async function handlePause() {
     try {
       await pausetrack(accessToken.current);
-    //   setIsPlaying(false)
+      //   setIsPlaying(false)
     } catch (error) {
       console.log("error pausing track (see below):");
       console.log(error);
     }
   }
 
-  
   async function handlePrev() {
     try {
       await skipPrevious(accessToken.current);
@@ -271,7 +272,6 @@ export default function Home() {
     }
   }
 
-  
   async function handleNext() {
     try {
       await skipNext(accessToken.current);
@@ -298,7 +298,9 @@ export default function Home() {
     } catch (error) {
       console.log(error);
       console.log("just logged an error ^");
-      alert("Error saving note! Please copy your note, save it somewhere else, and refresh.");
+      alert(
+        "Error saving note! Please copy your note, save it somewhere else, and refresh."
+      );
     }
   }
 
@@ -316,7 +318,7 @@ export default function Home() {
   return (
     <main>
       <div>
-        {/* <div className="searchbar">
+        <div className="searchbar">
           <input
             type="text"
             id="trackURL"
@@ -324,11 +326,12 @@ export default function Home() {
               setTrackURL(e.target.value);
             }}
             placeholder="Enter Spotify track URL..."
-          />
+          />{" "}
+        </div>
 
-          {/* <button type="button" onClick={handleSearch}>Search</button> 
+        {/* <button type="button" onClick={handleSearch}>Search</button> 
         </div> 
-        */}
+       
 
         {/* conditional rendering */}
         {userID.current && songName && artist && imageURL && !loadingNote ? (
@@ -341,7 +344,11 @@ export default function Home() {
             <div className="flex-container">
               {/* left side */}
               <div className="flex-child" id="albumart">
-                <img alt="track cover art" src={imageURL} id="albumart-display" />
+                <img
+                  alt="track cover art"
+                  src={imageURL}
+                  id="albumart-display"
+                />
               </div>
               {/* right side */}
               <div className="flex-child green" id="notes">
@@ -353,35 +360,41 @@ export default function Home() {
                     handleKeypress(e.target.innerHTML);
                   }}
                   // textContent={currNote.current}
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currNote.current) }}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(currNote.current),
+                  }}
                 />
                 {/* <button onClick={()=>{saveNote({track_id:trackID, note:currNote})}}>Save Note</button> */}
               </div>
             </div>
-            <div className="music-player"> 
-            <button
-                  className="media-button"
-                  onClick={() => {
-                    handlePrev()
-                  }}
-                >⏮</button>
 
-                <button
-                  className="media-button"
-                  onClick={() => {
-                    isPlaying ? handlePause() : handlePlay();
-                  }}
-                >
-                {isPlaying? '⏸': '⏵'}
-            </button>
+            <div className="music-player">
+              <button
+                className="media-button"
+                onClick={() => {
+                  handlePrev();
+                }}
+              >
+                ⏮
+              </button>
 
-                  <button
-                  className="media-button"
-                  onClick={() => {
-                    handleNext()
-                  }}
-                >⏭</button>
+              <button
+                className="media-button"
+                onClick={() => {
+                  isPlaying ? handlePause() : handlePlay();
+                }}
+              >
+                {isPlaying ? "⏸" : "⏵"}
+              </button>
 
+              <button
+                className="media-button"
+                onClick={() => {
+                  handleNext();
+                }}
+              >
+                ⏭
+              </button>
             </div>
           </>
         ) : (

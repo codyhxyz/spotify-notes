@@ -1,32 +1,32 @@
-"use client" //what does this do
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+"use client"; //what does this do
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useEffect } from "react";
 
 // supabase auth tied to spotify provider auth
 export default function Home() {
-  const supabase = createClientComponentClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_KEY)
-  const REDIRECT_URL = 'https://my-spotify-notes.vercel.app'
+  const supabase = createClientComponentClient();
 
-  //redirects user to /home
-  
-  console.log('authorizing user via supabase + spotify...')
-  const spotifyLogin = async() => {
-    const {data} = await supabase.auth.signInWithOAuth({
-      provider: 'spotify',
+  console.log("authorizing user via supabase + spotify...");
+  async function spotifyLogin() {
+    // set dynamic redirect URL for functionality across dev and prod environemnts
+    // REDIRECT_URL should match one of Supabase 'Site URL' and 'Redirect URLs' in Auth/ URL Config
+    const REDIRECT_URL = window.location.origin;
+
+    console.log("authorizing user via supabase + spotify...");
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "spotify",
       options: {
-        scopes: 'user-read-email, user-modify-playback-state, user-read-playback-state, user-read-recently-played',
-        redirectTo: REDIRECT_URL
-      }
-    })
+        scopes:
+          "user-read-email, user-modify-playback-state, user-read-playback-state, user-read-recently-played",
+        redirectTo: REDIRECT_URL,
+      },
+    });
   }
-  spotifyLogin() 
-  
+  spotifyLogin();
+
   return (
     <main>
-      <div> 
-        Asking Spotify to log you in...
-      </div>
+      <div>Asking Spotify to log you in...</div>
     </main>
-  )
+  );
 }
-
-

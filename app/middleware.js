@@ -4,7 +4,6 @@ import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse } from "next/server";
 
 // TODO why isn't this middleware doing anything to help me refresh the session? 
-
 // verify auth & redirect if appropriate
 export async function middleware(req) {
     // verify auth
