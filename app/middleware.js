@@ -1,30 +1,28 @@
 // from https://supabase.com/docs/guides/auth/auth-helpers/nextjs
+// and https://noahflk.com/blog/supabase-auth-nextjs
 
 import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse } from "next/server";
 
-// TODO why isn't this middleware doing anything to help me refresh the session? 
-// verify auth & redirect if appropriate
+// intercepts new page loading, redirecting if session expired
 export async function middleware(req) {
-    // verify auth
-    const res = NextResponse.next() //?
-    const supabase = createMiddlewareClient({req, res})
-    const {data:{user} } = await supabase.auth.getSession() 
+  // verify auth
+  const res = NextResponse.next(); //this is the route the user is attempting to access
+  const supabase = createMiddlewareClient({ req, res });
+  const {
+    data: { user },
+  } = await supabase.auth.getSession();
 
-    // v redirect if auth level not appropriate for page
-    console.log('middleware says this is user: ', user)
-    if (user && req.nextUrl.pathname === '/') {
-        console.log('found user and redirecting to app')
-        return NextResponse.redirect(new URL('/home', req.url))
-        
-    }   
+  if (user && req.nextUrl.pathname === "/") {
+    return NextResponse.redirect(new URL("/home", req.url));
+  }
 
+  if (user) {
+    return res;
+  }
 
-    if (!user && req.nextUrl.pathname == '/home') {
-        console.log('found that supabase user not logged in, returning to safe zone...')
-        return NextResponse.redirect(new URL('/', req.url))
-
-    }
-
-    return res
+  // if session expired, redirects back to login
+  const redirectURL = req.nextUrl.clone();
+  redirectURL.pathname = "/";
+  return NextResponse.redirect(redirectURL);
 }

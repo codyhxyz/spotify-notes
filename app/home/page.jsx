@@ -9,6 +9,8 @@ import {
   skipPrevious,
   skipNext,
 } from "../../util/trackutils";
+import { spotifyLogout } from "../../util/authutils";
+import { delay } from "../../util/miscutils";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { debounce } from "lodash";
 import DOMPurify from "dompurify";
@@ -25,15 +27,11 @@ export default function Home() {
   const accessToken = useRef(null);
   const userID = useRef(null);
   const trackID = useRef(""); //change on search by URL or ID
-
   const currNote = useRef("");
-
-  // TODO decompose to misc utils
-  const delay = (duration) =>
-    new Promise((resolve) => setTimeout(resolve, duration));
 
   //get & store supabase and spotify session data
   useEffect(() => {
+    // async function so we can use await
     async function getSession() {
       const { data } = await supabase.auth.getSession();
       accessToken.current = data.session.provider_token; //store spotify access token
@@ -53,7 +51,6 @@ export default function Home() {
 
   // force user back to login screen to refresh spotify token
   function reauthenticateUser() {
-    // Router.push('/');
     window.location.href = "/";
   }
 
@@ -326,7 +323,16 @@ export default function Home() {
               setTrackURL(e.target.value);
             }}
             placeholder="Enter Spotify track URL..."
-          />{" "}
+          />
+          <button
+            id="logout-button"
+            onClick={() => {
+              spotifyLogout(supabase);
+              window.location.href = "/";
+            }}
+          >
+            Log out
+          </button>
         </div>
 
         {/* <button type="button" onClick={handleSearch}>Search</button> 
