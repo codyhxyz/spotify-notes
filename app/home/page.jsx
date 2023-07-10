@@ -246,7 +246,7 @@ export default function Home() {
 
   async function handlePlay() {
     try {
-      await playtrack(trackID.current, 0, accessToken.current);
+      await playtrack(trackID.current, accessToken.current, 0);
       //   setIsPlaying(true)
     } catch (error) {
       if (error.response.status == 403) {

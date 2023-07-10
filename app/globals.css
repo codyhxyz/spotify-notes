@@ -320,9 +320,9 @@ body,
   }
 }
 
-#logout-button {
-  /* background-color: #24b47e; */
-}
+/* #logout-button {
+  background-color: #24b47e;
+} */
 
 input[disabled] {
   color: var(--custom-color-secondary);
