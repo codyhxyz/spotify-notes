@@ -225,7 +225,7 @@ body,
 
 #notes {
   padding: 7px;
-  height: 635px;
+  height: 638px;
 }
 
 #notes:focus-visible {
@@ -301,7 +301,7 @@ body,
   }
   /* make note height the size of phone screen for a nice scroll-down experience */
   #notes {
-    height: 638vh;
+    height: 101vh;
     padding-top: 10px;
   }
   /* make media player smaller */
