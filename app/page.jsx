@@ -21,6 +21,10 @@ export default function Home() {
           >
             Log In With Spotify
           </button>
+          <p>
+            Please note that full navigation features are only possible on{" "}
+            <b>Spotify Premium</b> accounts.
+          </p>
         </div>
         <div>
           <img id="login-artwork" src="/icon.ico" alt="" />

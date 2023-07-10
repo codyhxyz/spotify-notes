@@ -1,7 +1,9 @@
 import "./globals.css";
-import { Inter } from "next/font/google";
+import { Inter, Open_Sans } from "next/font/google";
+import { Roboto } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"] });
+const opensans = Open_Sans({ subsets: ["latin"], weight: "500" });
 
 export const metadata = {
   title: "My Spotify Notes",
@@ -15,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={opensans.className}>{children}</body>
     </html>
   );
 }

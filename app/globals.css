@@ -207,6 +207,7 @@ body,
 }
 #song-artist-names {
   text-align: center;
+  font-family: "Open Sans", Verdana, Geneva, Tahoma, sans-serif !important;
 }
 
 #albumart-display {
@@ -224,7 +225,7 @@ body,
 
 #notes {
   padding: 7px;
-  height: 640px;
+  height: 635px;
 }
 
 #notes:focus-visible {
@@ -273,7 +274,7 @@ body,
   }
 
   #notes {
-    height: 640px;
+    height: 638px;
   }
 
   .media-button {
@@ -300,7 +301,7 @@ body,
   }
   /* make note height the size of phone screen for a nice scroll-down experience */
   #notes {
-    height: 101vh;
+    height: 638vh;
     padding-top: 10px;
   }
   /* make media player smaller */
@@ -330,8 +331,8 @@ input[disabled] {
 .media-button {
   background-color: whitesmoke;
   color: black;
-  border-radius: 50%;
-  font-size: 1.8em;
+  /* border-radius: 50%; */
+  /* font-size: 1.8em; */
   text-align: center;
   /* border: 2px solid whitesmoke; */
 }
@@ -340,7 +341,8 @@ input[disabled] {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: purple;
+  /* background-color: purple; */
+  margin-bottom: 15px;
 }
 
 .searchbar {
@@ -371,61 +373,6 @@ input[disabled] {
 /* Scrollbar corners */
 ::-webkit-scrollbar-corner {
   background: #000; /* Color of the scrollbar corners */
-}
-
-.block {
-  display: block;
-  width: 100%;
-}
-.inline-block {
-  display: inline-block;
-  width: 100%;
-}
-.flex-container {
-  display: flex;
-}
-
-.flex-child {
-  flex: 1;
-  border: 2px solid yellow;
-}
-
-.flex-child:first-child {
-  margin-right: 20px;
-}
-.flex {
-  display: flex;
-}
-.flex.column {
-  flex-direction: column;
-}
-.flex.row {
-  flex-direction: row;
-}
-.flex.flex-1 {
-  flex: 1 1 0;
-}
-.flex-end {
-  justify-content: flex-end;
-}
-.flex-center {
-  justify-content: center;
-}
-.items-center {
-  align-items: center;
-}
-.text-sm {
-  font-size: 0.8rem;
-  font-weight: 300;
-}
-.text-right {
-  text-align: right;
-}
-.font-light {
-  font-weight: 300;
-}
-.opacity-half {
-  opacity: 50%;
 }
 
 /* Button */
@@ -526,45 +473,4 @@ button.primary,
   width: 100%;
   font-size: 1.3rem;
   margin-bottom: 20px;
-}
-
-.avatarPlaceholder {
-  border: var(--custom-border);
-  border-radius: var(--custom-border-radius);
-  width: 35px;
-  height: 35px;
-  background-color: rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.form-widget {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.form-widget > .button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background-color: #444444;
-  text-transform: none !important;
-  transition: all 0.2s ease;
-}
-
-.form-widget .button:hover {
-  background-color: #2a2a2a;
-}
-
-.form-widget .button > .loader {
-  width: 17px;
-  animation: spin 1s linear infinite;
-  filter: invert(1);
-}
-
-.myclass {
-  color: black;
 }

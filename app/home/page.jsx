@@ -12,6 +12,13 @@ import {
 import { spotifyLogout } from "../../util/authutils";
 import { delay } from "../../util/miscutils";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import {
+  SkipBackwardIcon,
+  SkipForwardIcon,
+  PlayIcon,
+  PauseIcon,
+} from "../../util/miscutils";
+
 import { debounce } from "lodash";
 import DOMPurify from "dompurify";
 
@@ -343,6 +350,11 @@ export default function Home() {
         {/* conditional rendering */}
         {userID.current && songName && artist && imageURL && !loadingNote ? (
           <>
+            <div>
+              <h2 id="song-artist-names">
+                {songName} by {artist}{" "}
+              </h2>
+            </div>
             <div className="music-player">
               <button
                 className="media-button"
@@ -350,7 +362,7 @@ export default function Home() {
                   handlePrev();
                 }}
               >
-                ⏮
+                <SkipBackwardIcon />
               </button>
 
               <button
@@ -359,7 +371,7 @@ export default function Home() {
                   isPlaying ? handlePause() : handlePlay();
                 }}
               >
-                {isPlaying ? "⏸" : "⏵"}
+                {isPlaying ? <PauseIcon /> : <PlayIcon />}
               </button>
 
               <button
@@ -368,15 +380,10 @@ export default function Home() {
                   handleNext();
                 }}
               >
-                ⏭
+                <SkipForwardIcon />
               </button>
             </div>
 
-            <div>
-              <h2 id="song-artist-names">
-                {songName} by {artist}{" "}
-              </h2>
-            </div>
             <div id="art-and-notes">
               {/* left side */}
               <div id="albumart">
