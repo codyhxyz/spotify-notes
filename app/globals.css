@@ -167,16 +167,22 @@ body,
 
 /* Forms */
 
-label {
-  display: block;
-  margin: 5px 0;
-  color: var(--custom-color-secondary);
-  font-size: 0.8rem;
-  text-transform: uppercase;
+#trackURL {
+  width: 90%;
+  margin-right: 0.5rem;
+  border-radius: 5px;
+  border: var(--custom-border);
+  padding: 8px;
+  font-size: 0.9rem;
+  background-color: var(--custom-bg-color);
+  color: var(--custom-color);
+}
+#song-artist-names {
+  text-align: center;
 }
 
 #albumart-display {
-  /* max-width: 70%; */
+  max-width: 100%;
   height: auto;
 }
 
@@ -188,27 +194,34 @@ label {
   justify-content: center;
 }
 
-#display-note {
+#notes {
   padding: 7px;
   height: 130vh;
 }
 
-#display-note:focus-visible {
+#notes:focus-visible {
   outline: none;
 }
-#notes {
+
+#notes:empty:before {
+  content: attr(placeholder-text);
+  color: #797979;
+}
+
+#notes-display {
   flex: 1;
   width: 99.5%;
 
   font-size: 1.25rem;
   /* background-color: var(--custom-bg-color); */
-  background-color: rgb(34, 34, 34);
+  /* background-color: rgb(34, 34, 34); */
+  background-color: rgb(24, 24, 24);
   color: var(--custom-color);
-  border: 1px solid;
-  border-color: white;
   overflow: auto;
   margin-left: 3%;
   margin-right: 3%;
+  border: 1px solid;
+  border-color: plum;
 }
 
 #art-and-notes {
@@ -217,43 +230,60 @@ label {
   align-items: center;
 }
 
-/* display album art and notes side-by-side for displays >= 900px */
+/* for displays >= 900px */
 @media (max-width: 900px) {
   /* Adjust the pixel value to the desired threshold */
   #art-and-notes {
     flex-direction: row;
   }
 
-  #notes {
+  #notes-display {
     width: 99.5%;
     margin: 3%;
+    border: 1px solid;
+    border-color: plum;
+  }
+
+  #notes {
+    height: 130vh;
+  }
+
+  .media-button {
+    font-size: 1.8em;
+  }
+
+  #trackURL {
+    width: 90%;
   }
 }
-/* switch to columns for any display < 800px */
+/* for any display < 800px */
 @media (max-width: 899px) {
-  /* Adjust the pixel value to the desired threshold */
+  /* make notes go in column with album art */
   #art-and-notes {
     flex-direction: column;
   }
-  #notes {
-    width: 90%;
+  /* make notes as wide as screen */
+  #notes-display {
+    /* width: 99%; */
     margin: 0;
-    margin-left: 3%;
-    margin-right: 3%;
+    border: none;
+    /* margin-left: 3%; */
+    /* margin-right: 3%; */
   }
-}
+  /* make note height the size of phone screen for a nice scroll-down experience */
+  #notes {
+    height: 101vh;
+    padding-top: 10px;
+  }
+  /* make media player smaller */
+  .media-button {
+    font-size: 1em;
+  }
 
-#trackURL {
-  /* width: 90%; */
-  min-width: 60%;
-  max-width: 75%;
-  margin-right: 0.5rem;
-  border-radius: 5px;
-  border: var(--custom-border);
-  padding: 8px;
-  font-size: 0.9rem;
-  background-color: var(--custom-bg-color);
-  color: var(--custom-color);
+  /* make room between URL and logout button */
+  #trackURL {
+    width: 60%;
+  }
 }
 
 #logout-button {

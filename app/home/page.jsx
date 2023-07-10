@@ -343,38 +343,6 @@ export default function Home() {
         {/* conditional rendering */}
         {userID.current && songName && artist && imageURL && !loadingNote ? (
           <>
-            <div>
-              <h2>
-                {songName} by {artist}{" "}
-              </h2>
-            </div>
-            <div id="art-and-notes">
-              {/* left side */}
-              <div id="albumart">
-                <img
-                  alt="track cover art"
-                  src={imageURL}
-                  id="albumart-display"
-                />
-              </div>
-              {/* right side */}
-              <div id="notes">
-                {/* <textarea id="notes" type="text" onChange={(e)=>{setCurrNote(e.target.value)}} value={currNote} style={{height: "700px"}} /> */}
-                <div
-                  id="display-note"
-                  contentEditable="true"
-                  onInput={(e) => {
-                    handleKeypress(e.target.innerHTML);
-                  }}
-                  // textContent={currNote.current}
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(currNote.current),
-                  }}
-                />
-                {/* <button onClick={()=>{saveNote({track_id:trackID, note:currNote})}}>Save Note</button> */}
-              </div>
-            </div>
-
             <div className="music-player">
               <button
                 className="media-button"
@@ -402,6 +370,39 @@ export default function Home() {
               >
                 ⏭
               </button>
+            </div>
+
+            <div>
+              <h2 id="song-artist-names">
+                {songName} by {artist}{" "}
+              </h2>
+            </div>
+            <div id="art-and-notes">
+              {/* left side */}
+              <div id="albumart">
+                <img
+                  alt="track cover art"
+                  src={imageURL}
+                  id="albumart-display"
+                />
+              </div>
+              {/* right side */}
+              <div id="notes-display">
+                {/* <textarea id="notes" type="text" onChange={(e)=>{setCurrNote(e.target.value)}} value={currNote} style={{height: "700px"}} /> */}
+                <div
+                  id="notes"
+                  contentEditable="true"
+                  placeholder-text="Enter your notes here..."
+                  onInput={(e) => {
+                    handleKeypress(e.target.innerHTML);
+                  }}
+                  // textContent={currNote.current}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(currNote.current),
+                  }}
+                />
+                {/* <button onClick={()=>{saveNote({track_id:trackID, note:currNote})}}>Save Note</button> */}
+              </div>
             </div>
           </>
         ) : (
