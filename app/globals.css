@@ -214,8 +214,8 @@ body,
 
   font-size: 1.25rem;
   /* background-color: var(--custom-bg-color); */
-  /* background-color: rgb(34, 34, 34); */
-  background-color: rgb(24, 24, 24);
+  background-color: rgb(34, 34, 34);
+  /* background-color: rgb(24, 24, 24); */
   color: var(--custom-color);
   overflow: auto;
   margin-left: 3%;
