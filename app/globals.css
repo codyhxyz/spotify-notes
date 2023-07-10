@@ -196,7 +196,7 @@ body,
 
 #notes {
   padding: 7px;
-  height: 130vh;
+  height: 640px;
 }
 
 #notes:focus-visible {
@@ -245,7 +245,7 @@ body,
   }
 
   #notes {
-    height: 130vh;
+    height: 640px;
   }
 
   .media-button {
