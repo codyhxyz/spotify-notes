@@ -348,9 +348,9 @@ export default function Home() {
                 {songName} by {artist}{" "}
               </h2>
             </div>
-            <div className="flex-container">
+            <div id="art-and-notes">
               {/* left side */}
-              <div className="flex-child" id="albumart">
+              <div id="albumart">
                 <img
                   alt="track cover art"
                   src={imageURL}
@@ -358,7 +358,7 @@ export default function Home() {
                 />
               </div>
               {/* right side */}
-              <div className="flex-child green" id="notes">
+              <div id="notes">
                 {/* <textarea id="notes" type="text" onChange={(e)=>{setCurrNote(e.target.value)}} value={currNote} style={{height: "700px"}} /> */}
                 <div
                   id="display-note"

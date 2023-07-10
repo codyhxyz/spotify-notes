@@ -175,6 +175,74 @@ label {
   text-transform: uppercase;
 }
 
+#albumart-display {
+  /* max-width: 70%; */
+  height: auto;
+}
+
+#albumart {
+  flex: 1;
+  border: none;
+  border-radius: 0px;
+  display: flex;
+  justify-content: center;
+}
+
+#display-note {
+  padding: 7px;
+  height: 130vh;
+}
+
+#display-note:focus-visible {
+  outline: none;
+}
+#notes {
+  flex: 1;
+  width: 99.5%;
+
+  font-size: 1.25rem;
+  /* background-color: var(--custom-bg-color); */
+  background-color: rgb(34, 34, 34);
+  color: var(--custom-color);
+  border: 1px solid;
+  border-color: white;
+  overflow: auto;
+  margin-left: 3%;
+  margin-right: 3%;
+}
+
+#art-and-notes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* display album art and notes side-by-side for displays >= 900px */
+@media (max-width: 900px) {
+  /* Adjust the pixel value to the desired threshold */
+  #art-and-notes {
+    flex-direction: row;
+  }
+
+  #notes {
+    width: 99.5%;
+    margin: 3%;
+  }
+}
+/* switch to columns for any display < 800px */
+@media (max-width: 899px) {
+  /* Adjust the pixel value to the desired threshold */
+  #art-and-notes {
+    flex-direction: column;
+  }
+  #notes {
+    width: 90%;
+    margin: 0;
+    margin-left: 3%;
+    margin-right: 3%;
+  }
+}
+
 #trackURL {
   /* width: 90%; */
   min-width: 60%;
@@ -196,51 +264,8 @@ input[disabled] {
   color: var(--custom-color-secondary);
 }
 
-#notes {
-  width: 99.5%;
-  /* border-radius: 5px; */
-  /* border: var(--custom-border); */
-  border: none;
-  /* padding: 8px; */
-  /* margin: 2px; */
-  /* margin-right: 2rem; */
-
-  font-size: 1.25rem;
-  background-color: var(--custom-bg-color);
-  color: var(--custom-color);
-  border: 1px solid;
-  border-color: white;
-  overflow: auto;
-  margin-bottom: 3rem;
-  margin-right: 0.5rem;
-}
-
 #login-button {
   background-color: #24b47e;
-}
-
-#display-note {
-  padding: 7px;
-  /* the height here allows full clickability of the div */
-  min-height: 36.5rem;
-}
-
-#display-note:focus-visible {
-  outline: none;
-}
-
-#albumart-display {
-  max-width: 70%;
-  height: auto;
-}
-
-#albumart {
-  /* padding: 30px; */
-  border: none;
-  border-radius: 0px;
-  margin-right: -10rem;
-  min-height: 30rem;
-  /* margin-left: 1rem; */
 }
 
 .media-button {
