@@ -165,6 +165,34 @@ body,
   }
 }
 
+.login-div {
+  margin: 50px;
+  display: flex;
+  justify-content: space-around;
+
+  flex-direction: row;
+  /* align-items: center; */
+  flex: wrap;
+}
+#login-artwork {
+  width: 512px;
+}
+@media (max-width: 900px) {
+  .login-div {
+    flex-direction: row;
+  }
+  #login-artwork {
+    width: 512px;
+  }
+}
+@media (max-width: 899px) {
+  .login-div {
+    flex-direction: column;
+  }
+  #login-artwork {
+    width: 75vw;
+  }
+}
 /* Forms */
 
 #trackURL {
@@ -296,6 +324,7 @@ input[disabled] {
 
 #login-button {
   background-color: #24b47e;
+  margin-bottom: 10%;
 }
 
 .media-button {
