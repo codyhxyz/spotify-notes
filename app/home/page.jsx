@@ -6,18 +6,20 @@ import {
   pausetrack,
   getplaybackstate,
   getrecentlyplayed,
+  getavailabledevices,
   skipPrevious,
   skipNext,
-} from "../../util/trackutils";
+  extractTrackDataFromResponse,
+  extractTrackIDFromSongURL,
+} from "../../util/apiutils";
 import { spotifyLogout } from "../../util/authutils";
-import { delay } from "../../util/miscutils";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import {
   SkipBackwardIcon,
   SkipForwardIcon,
   PlayIcon,
   PauseIcon,
-} from "../../util/miscutils";
+} from "../../util/components";
 
 import { debounce } from "lodash";
 import DOMPurify from "dompurify";
@@ -29,19 +31,37 @@ export default function Home() {
   const [artist, setArtist] = useState("");
   const [imageURL, setImageURL] = useState("");
   const [loadingNote, setLoadingNote] = useState("");
+  const [foundActiveDevice, setFoundActiveDevice] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false); //tracks whether user is playing music from spotify
   const accessToken = useRef(null);
   const userID = useRef(null);
-  const trackID = useRef(""); //change on search by URL or ID
+  const [trackID, setTrackID] = useState("");
   const currNote = useRef("");
+
+  // makes button clicks appear responsive by setting buttons to grey immediately until a response has been received
+  const [awaitingPlayAPIResponse, setAwaitingPlayAPIResponse] = useState(false);
+  const [awaitingLSkipAPIResponse, setAwaitingLSkipAPIResponse] =
+    useState(false);
+  const [awaitingRSkipAPIResponse, setAwaitingRSkipAPIResponse] =
+    useState(false);
+  const playButtonColor = awaitingPlayAPIResponse ? "grey" : "white";
+  const lSkipButtonColor = awaitingLSkipAPIResponse ? "grey" : "white";
+  const rSkipButtonColor = awaitingRSkipAPIResponse ? "grey" : "white";
 
   //get & store supabase and spotify session data
   useEffect(() => {
     // async function so we can use await
     async function getSession() {
+      // get current supabase session
       const { data } = await supabase.auth.getSession();
-      accessToken.current = data.session.provider_token; //store spotify access token
+      const token = data?.session?.provider_token;
+      // if no provider token was found, we need to reauthenticate the user
+      if (!token) {
+        console.log("no provider token found, reauthenticating user...");
+        reauthenticateUser();
+      }
+      accessToken.current = token; //store spotify access token
       userID.current = data.session.user.id; //store supabase user ID
       console.log("saving the following token: ", accessToken.current);
     }
@@ -61,92 +81,90 @@ export default function Home() {
     window.location.href = "/";
   }
 
-  // update play button view and handle showing currently playing song if search box is empty
-  // TODO decompose better; probably make a 'updateplaybutton'
-  const queryPlaybackState = async () => {
-    try {
-      const response = await getplaybackstate(accessToken.current);
-      if (response) {
-        if (response.status == 204) {
-          setIsPlaying(false);
-        } else {
-          setIsPlaying(response.data.is_playing);
-        }
-        return response.data;
+  // set play button state using API response (which could be malformed)
+  function updateIsPlayingIfNecessary(response) {
+    // if (awaitingPlayAPIResponse) return; // enable 'optimistic UI'
+    if (response?.data?.is_playing) {
+      if (response.status == 204) {
+        // console.log("setting isplaying false");
+        setIsPlaying(false);
+      } else {
+        // console.log("setting isplaying to: ", response.data.is_playing);
+        setIsPlaying(response.data.is_playing);
       }
-    } catch (error) {
-      if (error.response.status == 401) {
-        reauthenticateUser();
-      }
-      setIsPlaying(false); //if we dont know, default to play button
-      console.log(error);
-    }
-  };
-
-  // recurring spotify query for:
-  // 1. playback state
-  // 2. recently played <-- commented this out for now
-  // TODO decompose, probably make into 'updatetrackdisplay'
-  useEffect(() => {
-    let querySpotify = async () => {
-      const playbackData = await queryPlaybackState();
-      // const recentlyPlayedData = await queryRecentlyPlayed();
-
-      // handle 'show current/recent song if search box empty'
-      if (!trackURL) {
-        let tid;
-        // extract trackIDs from the responses
-        const playbackDataID = playbackData?.item?.id;
-        // const recentlyPlayedDataID = recentlyPlayedData?.length > 0 ? recentlyPlayedData[0]?.track?.id : undefined
-
-        // reload track view, priority to currently playing track
-        if (playbackDataID) {
-          if (trackID.current != playbackDataID) {
-            tid = playbackDataID;
-          }
-        }
-        // else if (recentlyPlayedDataID) {
-        //   if(trackID.current != recentlyPlayedDataID) {
-        //     tid = recentlyPlayedDataID
-        //   }
-        // }
-        if (tid) handleGetTrackFromID(tid);
-      }
-
-      // use recursion to avoid stale closure
-      await delay(1000);
-      querySpotify();
-    };
-
-    // start loop over upon trackURL change
-    querySpotify();
-
-    // clean up upon unmount of trackURL change
-    return () => {
-      querySpotify = () => {};
-    };
-  }, [trackURL]);
-
-  // returns an array of the most recently finished spotify song
-  // NOTE: may remove entirely, has inconvenient effects on note auto-load behavior
-  async function queryRecentlyPlayed() {
-    try {
-      const response = await getrecentlyplayed(accessToken.current);
-      if (response?.data?.items) {
-        //extract trackID
-        return response.data.items;
-      }
-    } catch (error) {
-      if (error.response.status == 401) {
-        reauthenticateUser();
-      }
-      console.log(error);
+    } else {
+      // console.log("setting isplaying to false. response is : ", response);
+      setIsPlaying(false);
     }
   }
 
+  // update foundActiveDevice state with response from getplaybackstate API call
+  function updateActiveDevice(response) {
+    setFoundActiveDevice(response?.data?.device?.id);
+  }
+
+  // extracts currently playing trackID from response (could be nullish)
+  function extractTrackIDFromResponse(response) {
+    return response?.data?.item?.id; //could be nullish
+  }
+
+  // makes Playback State API call & uses it to:
+  // 1) update isPlaying state if necessary
+  // 2) update foundActiveDevice state
+  // 2) update trackID and load track if necessary
+  const loadPlaybackState = useCallback(async () => {
+    try {
+      // getplaybackstate's response has three bits of info we want:
+      // isPlaying: response.data.is_playing
+      // trackID: response.data.item.id
+      // foundActiveDevice: response.data.device
+      const response = await getplaybackstate(accessToken.current);
+      updateIsPlayingIfNecessary(response); //takes a playback state api response and updates the player UI accordingly
+      updateActiveDevice(response);
+
+      // if search box empty, load currently playing track as our note
+      const responseTrackID = extractTrackIDFromResponse(response);
+      if (!trackURL) {
+        if (responseTrackID && responseTrackID !== trackID) {
+          // display currently playing track
+          setTrackID(responseTrackID);
+        }
+      }
+    } catch (error) {
+      if (error?.response?.status == 401) reauthenticateUser();
+      updateIsPlayingIfNecessary(null);
+    }
+  }, [artist, songName, trackID, trackURL]); //wrapping in usecallback prevents stale closure
+
+  //listen to changes in trackId state and pull track data + update screen
+  //deps: [trackID]
+  useEffect(() => {
+    //updates state of the app like track name
+    console.log(
+      "calling loadTrackDatFromID() from useeffect since trackID changed"
+    );
+    loadTrackDataFromID();
+  }, [trackID]);
+
+  //constructor
+  //deps: []
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadPlaybackState();
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [loadPlaybackState]);
+
+  // loads the song from the pasted URL
+  // deps=[] since trackURL passed as param
   const debouncedSearch = useCallback(
+    // only gets called 500ms after last keypress in searchbox
     debounce((trackURL) => {
-      handleSearch(trackURL);
+      const tid = extractTrackIDFromSongURL(trackURL);
+      setTrackID(tid); //triggers loading of track onto display
     }, 500),
     []
   );
@@ -159,130 +177,178 @@ export default function Home() {
   }, [trackURL, debouncedSearch]);
 
   // get note from DB upon successful track search
-  async function getNote(tid) {
+  async function fetchNote(tid) {
     // code to load note into currNote
     // note: should i have this code in a useCallback func as the example has it?
     //   but then how would i make SURE it happens AFTER the user loads a new song,
     //   and BEFORE they start typing in a new note?
+    let note = "";
     try {
       setLoadingNote(true);
-
       let { data, error, status } = await supabase
         .from("notes")
         .select("track_id, note")
         .eq("user_id", userID.current) //only load my own notes
         .eq("track_id", tid) //only load the right song's notes
         .single(); //turns from array to single object
-
       console.log("using this trackID in our database pull", tid);
       // import user's data onto screen
       if (data) {
-        currNote.current = data.note;
         console.log("successfully got note from database, it is: ", data.note);
+        note = data.note; //got note, func returns this value
       }
     } catch (error) {
       console.log("hi there, we got an error. Heres the error below : ");
       console.log(error);
     } finally {
       setLoadingNote(false);
+      return note;
     }
   }
 
-  // fetch song from spotify by ID
-  async function handleGetTrackFromID(tid) {
-    trackID.current = ""; //reset trackID to null
-
+  function clearSongAndNoteViewStates() {
     setArtist("");
     setSongName("");
     setImageURL("");
     currNote.current = "";
+  }
 
-    trackID.current = tid;
-    if (!accessToken.current) return; //wait until we've gotten an access token post-login
+  function setSongAndNoteViewStates(song_name, image_url, artist, note) {
+    console.log("setting view state to this note: ", note);
+    setArtist(artist);
+    setSongName(song_name);
+    setImageURL(image_url);
+    currNote.current = note;
+  }
+
+  // this code was helpful if we already had current song information from a different api call.
+  // i havent found a way for it to be useful.
+
+  // assumes response is from 'currently playing' api call
+  // trackID either taken from state if called by state update, otherwise passed manually as a parameter
+  // async function loadTrackDataUsingResponse(response, tid = trackID) {
+  //   clearSongAndNoteViewStates();
+
+  //   const track = response?.data?.item;
+  //   const [song_name, image_url, artist] = extractTrackDataFromResponse(track); //get track data
+  //   const note = await fetchNote(tid); //get user notes
+  //   console.log(
+  //     "calling setsongandnoteviewstates from loadTrackDataUsingResponse"
+  //   );
+  //   setSongAndNoteViewStates(song_name, image_url, artist, note); //update display
+  // }
+
+  // fetch song from spotify by ID
+  // and load user notes for that song from our database
+  // this func is triggered by a useEffect() with deps[trackID]
+  const loadTrackDataFromID = async () => {
+    if (!accessToken.current || !trackID) return;
+
+    const tid = trackID; //trackID assumed to be current
+    console.log("trackID which should be current is ", trackID);
+    clearSongAndNoteViewStates();
     try {
       const response = await gettrack(tid, accessToken.current);
-      setSongName(response.data.name);
-      let artistsString = "";
-      for (let i = 0; i < response.data.artists.length; i++) {
-        if (i != 0) artistsString += ", ";
-        artistsString += response.data.artists[i].name;
-      }
-      setArtist(artistsString);
-      setImageURL(response.data.album.images[0].url);
-      await getNote(tid);
+      const track_data = response?.data;
+      const [song_name, image_url, artist] =
+        extractTrackDataFromResponse(track_data);
+      const note = await fetchNote(tid); //get user notes
+      console.log("calling setsongandnoteviewstates from loadTrackDataFromID");
+
+      setSongAndNoteViewStates(song_name, image_url, artist, note); //update display
     } catch (error) {
       console.log("error: failed to get track ", tid);
       console.log(error);
-      if (error.response.status == 401) {
+      if (error?.response?.status == 401) {
         reauthenticateUser();
       }
-      // // if we fail to get the track in any way, reset the view to empty;
-      // trackID.current = ""; //reset trackID to null
-      // setArtist("");
-      // setSongName("");
-      // setImageURL("");
-      // currNote.current = ""
     }
-  }
+  };
 
-  // reset view, extract track from URL
-  function handleSearch(turl) {
-    // reset trackID to safeguard current note from being overwritten
-    trackID.current = "";
-
-    setArtist("");
-    setSongName("");
-    setImageURL("");
-    currNote.current = "";
-
-    const reg = turl.match(/spotify.com\/track\/([a-zA-Z0-9]+)\?.*$/);
-    if (reg?.[1]) {
-      const tid = reg?.[1];
-      trackID.current = tid;
-      console.log("found following trackID: ", tid);
-      handleGetTrackFromID(tid);
-    }
-  }
-
-  async function handlePlay() {
+  async function handlePlayButtonClick() {
     try {
-      await playtrack(trackID.current, accessToken.current, 0);
-      //   setIsPlaying(true)
+      setAwaitingPlayAPIResponse(true);
+
+      // if no device is active, Spotify rejects any requests to play tracks,
+      // so we populate our play request with the first available device we can find.
+      let deviceIDToUse = null;
+      if (!foundActiveDevice) {
+        const response = await getavailabledevices(accessToken.current);
+        const devices = response?.data?.devices;
+        if (devices && devices.length > 0) {
+          for (let i = 0; i < devices.length; i++) {
+            // gets the first non-restricted device
+            if (devices[i]?.id && !devices[i]?.is_restricted) {
+              deviceIDToUse = devices[i].id;
+              console.log("switching to device ID ", deviceIDToUse);
+            }
+          }
+        }
+      }
+
+      await playtrack(trackID, accessToken.current, deviceIDToUse, null);
+
+      // enable optimistic play button view updating
+      setAwaitingPlayAPIResponse(false);
     } catch (error) {
-      if (error.response.status == 403) {
+      if (error?.response?.status == 403) {
         alert("Device inaccessible; please change your Spotify output device.");
-        // TODO handle this
       }
       console.log("error playing track");
       console.log(error);
+    } finally {
+      setAwaitingPlayAPIResponse(false); //default
     }
   }
 
-  async function handlePause() {
+  async function handlePauseButtonClick() {
     try {
+      // enable optimistic play button view updating
+      setAwaitingPlayAPIResponse(true);
+
       await pausetrack(accessToken.current);
-      //   setIsPlaying(false)
+
+      // enable optimistic play button view updating
+      setAwaitingPlayAPIResponse(false);
     } catch (error) {
       console.log("error pausing track (see below):");
       console.log(error);
+    } finally {
+      setAwaitingPlayAPIResponse(false); //default
     }
   }
 
-  async function handlePrev() {
+  async function handlePrevButtonClick() {
     try {
+      setAwaitingLSkipAPIResponse(true);
       await skipPrevious(accessToken.current);
+      setAwaitingLSkipAPIResponse(false);
+      await loadPlaybackState(); //make extra function call to see song w less latency
+      console.log(
+        "returned back from my await! yiu should see a song on next refresh!"
+      );
     } catch (error) {
       console.log("error backing track (see below):");
       console.log(error);
+    } finally {
+      setAwaitingLSkipAPIResponse(false); //default
     }
   }
 
-  async function handleNext() {
+  async function handleNextButtonClick() {
     try {
+      setAwaitingRSkipAPIResponse(true);
       await skipNext(accessToken.current);
+      setAwaitingRSkipAPIResponse(false);
+      await loadPlaybackState(); //make extra function call to see song w less latency
+      console.log(
+        "returned back from my await! yiu should see a song on next refresh!"
+      );
     } catch (error) {
       console.log("error forwarding track (see below):");
       console.log(error);
+    } finally {
+      setAwaitingRSkipAPIResponse(false); //default
     }
   }
 
@@ -300,6 +366,7 @@ export default function Home() {
       if (error) throw error;
       // alert('Note saved!')
       // TODO make a less intrusive way to display that note has been saved successfully
+      // eg, flash the note border Forest Green for a few seconds after last save.
     } catch (error) {
       console.log(error);
       console.log("just logged an error ^");
@@ -317,7 +384,7 @@ export default function Home() {
     //   );
 
     currNote.current = note;
-    debouncedSave(userID.current, trackID.current, note);
+    debouncedSave(userID.current, trackID, note);
   }
 
   return (
@@ -343,9 +410,9 @@ export default function Home() {
           </button>
         </div>
 
-        {/* <button type="button" onClick={handleSearch}>Search</button> 
-        </div> 
-       
+        {/* <button type="button" onClick={extractTrackIDFromSongURL}>Search</button>
+        </div>
+
 
         {/* conditional rendering */}
         {userID.current && songName && artist && imageURL && !loadingNote ? (
@@ -358,8 +425,9 @@ export default function Home() {
             <div className="music-player">
               <button
                 className="media-button"
+                style={{ backgroundColor: lSkipButtonColor }}
                 onClick={() => {
-                  handlePrev();
+                  handlePrevButtonClick();
                 }}
               >
                 <SkipBackwardIcon />
@@ -367,8 +435,11 @@ export default function Home() {
 
               <button
                 className="media-button"
+                style={{ backgroundColor: playButtonColor }}
                 onClick={() => {
-                  isPlaying ? handlePause() : handlePlay();
+                  isPlaying
+                    ? handlePauseButtonClick()
+                    : handlePlayButtonClick();
                 }}
               >
                 {isPlaying ? <PauseIcon /> : <PlayIcon />}
@@ -376,8 +447,9 @@ export default function Home() {
 
               <button
                 className="media-button"
+                style={{ backgroundColor: rSkipButtonColor }}
                 onClick={() => {
-                  handleNext();
+                  handleNextButtonClick();
                 }}
               >
                 <SkipForwardIcon />
@@ -395,7 +467,6 @@ export default function Home() {
               </div>
               {/* right side */}
               <div id="notes-display">
-                {/* <textarea id="notes" type="text" onChange={(e)=>{setCurrNote(e.target.value)}} value={currNote} style={{height: "700px"}} /> */}
                 <div
                   id="notes"
                   contentEditable="true"
@@ -403,12 +474,10 @@ export default function Home() {
                   onInput={(e) => {
                     handleKeypress(e.target.innerHTML);
                   }}
-                  // textContent={currNote.current}
                   dangerouslySetInnerHTML={{
                     __html: DOMPurify.sanitize(currNote.current),
                   }}
                 />
-                {/* <button onClick={()=>{saveNote({track_id:trackID, note:currNote})}}>Save Note</button> */}
               </div>
             </div>
           </>

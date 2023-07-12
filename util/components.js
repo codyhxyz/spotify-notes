@@ -1,7 +1,3 @@
-export async function delay(duration) {
-  return new Promise((resolve) => setTimeout(resolve, duration));
-}
-
 export const SkipBackwardIcon = ({ fill = "none" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"

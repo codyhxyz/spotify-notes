@@ -16,14 +16,26 @@ export async function gettrack(trackID, access_token) {
 }
 
 // plays track upon clicking the play button, or clicking on a timestamp
-export async function playtrack(trackID, access_token, position_ms = 0) {
+export async function playtrack(
+  trackID,
+  access_token,
+  device_id = null,
+  position_ms = null
+) {
   console.log("about to play tracckkk");
   if (!access_token) return;
-  const url = "https://api.spotify.com/v1/me/player/play";
-  const data_obj = {
+  let url = "https://api.spotify.com/v1/me/player/play";
+  // include preferred device in our request if there is one
+  if (device_id) {
+    url += `?device_id=${device_id}`;
+  }
+  let data_obj = {
     uris: [`spotify:track:${trackID}`],
-    position_ms: position_ms,
   };
+  // only add in position if we have it, that way we resume playback from last position by default
+  if (position_ms) {
+    data_obj.position_ms = position_ms;
+  }
   const headers_obj = {
     headers: {
       Authorization: `Bearer ${access_token}`,
@@ -75,7 +87,7 @@ export async function skipNext(access_token) {
   return axios.post(url, {}, headers_obj);
 }
 
-// pauses whatever track is currently playing on Spotify
+// gets current track being played & currently playing
 export async function getplaybackstate(access_token) {
   if (!access_token) return;
   // console.log('getting playback state from spotify...')
@@ -90,19 +102,58 @@ export async function getplaybackstate(access_token) {
 }
 
 // get most recently played track
-export async function getrecentlyplayed(access_token, num_needed = 1) {
+// note that this has intended behavior and so i have chosen not to use it so far
+// export async function getrecentlyplayed(access_token, num_needed = 1) {
+//   if (!access_token) return;
+//   // console.log('getting recently played from spotify...')
+//   const RECENT_ENDPOINT =
+//     "https://api.spotify.com/v1/me/player/recently-played";
+//   const config = {
+//     headers: {
+//       Authorization: `Bearer ${access_token}`,
+//     },
+//     data: {
+//       limit: num_needed,
+//     },
+//   };
+
+//   return axios.get(RECENT_ENDPOINT, config);
+// }
+
+// get avail devices
+export async function getavailabledevices(access_token) {
   if (!access_token) return;
-  // console.log('getting recently played from spotify...')
-  const RECENT_ENDPOINT =
-    "https://api.spotify.com/v1/me/player/recently-played";
+  console.log("getting avail devices from spotify...");
+  const DEVICES_ENDPOINT = "https://api.spotify.com/v1/me/player/devices";
   const config = {
     headers: {
       Authorization: `Bearer ${access_token}`,
     },
-    data: {
-      limit: num_needed,
-    },
   };
+  return axios.get(DEVICES_ENDPOINT, config);
+}
 
-  return axios.get(RECENT_ENDPOINT, config);
+//////////////////////////////////////////////////////////////////////////////////////
+
+// params: track object
+// returns: song name, image url, and artists
+export function extractTrackDataFromResponse(track) {
+  const song_name = track.name;
+  let artistsString = "";
+  for (let i = 0; i < track.artists.length; i++) {
+    if (i != 0) artistsString += ", ";
+    artistsString += track.artists[i].name;
+  }
+  const image_url = track.album.images[0].url;
+  return [song_name, image_url, artistsString];
+}
+
+export function extractTrackIDFromSongURL(turl) {
+  const reg = turl.match(/spotify.com\/track\/([a-zA-Z0-9]+)\?.*$/);
+  if (reg?.[1]) {
+    const tid = reg?.[1];
+    console.log("found following trackID: ", tid);
+    return tid;
+  }
+  console.log("invalid song ID in search bar");
 }

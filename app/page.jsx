@@ -25,13 +25,12 @@ export default function Home() {
             along!
           </p>
           <p className="text-message sent">
-            Please Note: Full navigation features are only possible on{" "}
+            Please note that full navigation features are only possible on{" "}
             <b>Spotify Premium</b> accounts.
           </p>
-          {/* <p className="login-p">
-            Please Note: Full navigation features are only possible on{" "}
-            <b>Spotify Premium</b> accounts.
-          </p> */}
+          <p className="text-message">
+            And this app is still in pre-alpha--we could lose your data!
+          </p>
         </div>
         <div>
           <img id="login-artwork" src="/icon.ico" alt="" />
