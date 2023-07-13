@@ -1,11 +1,16 @@
 "use client";
-import { useEffect, useState, useCallback, useRef } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  MutableRefObject,
+} from "react";
 import {
   gettrack,
   playtrack,
   pausetrack,
   getplaybackstate,
-  getrecentlyplayed,
   getavailabledevices,
   skipPrevious,
   skipNext,
@@ -23,28 +28,30 @@ import {
 
 import { debounce } from "lodash";
 import DOMPurify from "dompurify";
+import { AxiosResponse } from "axios";
 
 export default function Home() {
   const supabase = createClientComponentClient();
-  const [trackURL, setTrackURL] = useState(""); //change only on search by URL, not search by ID
-  const [songName, setSongName] = useState("");
-  const [artist, setArtist] = useState("");
-  const [imageURL, setImageURL] = useState("");
-  const [loadingNote, setLoadingNote] = useState("");
-  const [foundActiveDevice, setFoundActiveDevice] = useState(false);
+  const [trackURL, setTrackURL] = useState<string>(""); //change only on search by URL, not search by ID
+  const [songName, setSongName] = useState<string>("");
+  const [artist, setArtist] = useState<string>("");
+  const [imageURL, setImageURL] = useState<string>("");
+  const [loadingNote, setLoadingNote] = useState<boolean>(false);
+  const [foundActiveDevice, setFoundActiveDevice] = useState<boolean>(false);
 
-  const [isPlaying, setIsPlaying] = useState(false); //tracks whether user is playing music from spotify
-  const accessToken = useRef(null);
-  const userID = useRef(null);
-  const [trackID, setTrackID] = useState("");
-  const currNote = useRef("");
+  const [isPlaying, setIsPlaying] = useState<boolean>(false); //tracks whether user is playing music from spotify
+  const accessToken = useRef<string>();
+  const userID = useRef<string | undefined>(undefined);
+  const [trackID, setTrackID] = useState<string | undefined>("");
+  const currNote = useRef<string>("");
 
   // makes button clicks appear responsive by setting buttons to grey immediately until a response has been received
-  const [awaitingPlayAPIResponse, setAwaitingPlayAPIResponse] = useState(false);
+  const [awaitingPlayAPIResponse, setAwaitingPlayAPIResponse] =
+    useState<boolean>(false);
   const [awaitingLSkipAPIResponse, setAwaitingLSkipAPIResponse] =
-    useState(false);
+    useState<boolean>(false);
   const [awaitingRSkipAPIResponse, setAwaitingRSkipAPIResponse] =
-    useState(false);
+    useState<boolean>(false);
   const playButtonColor = awaitingPlayAPIResponse ? "grey" : "white";
   const lSkipButtonColor = awaitingLSkipAPIResponse ? "grey" : "white";
   const rSkipButtonColor = awaitingRSkipAPIResponse ? "grey" : "white";
@@ -60,9 +67,10 @@ export default function Home() {
       if (!token) {
         console.log("no provider token found, reauthenticating user...");
         reauthenticateUser();
+        return;
       }
       accessToken.current = token; //store spotify access token
-      userID.current = data.session.user.id; //store supabase user ID
+      userID.current = data?.session?.user?.id; //store supabase user ID
       console.log("saving the following token: ", accessToken.current);
     }
     getSession();
@@ -82,7 +90,7 @@ export default function Home() {
   }
 
   // set play button state using API response (which could be malformed)
-  function updateIsPlayingIfNecessary(response) {
+  function updateIsPlayingIfNecessary(response: AxiosResponse | null) {
     // if (awaitingPlayAPIResponse) return; // enable 'optimistic UI'
     if (response?.data?.is_playing) {
       if (response.status == 204) {
@@ -99,12 +107,12 @@ export default function Home() {
   }
 
   // update foundActiveDevice state with response from getplaybackstate API call
-  function updateActiveDevice(response) {
+  function updateActiveDevice(response: AxiosResponse) {
     setFoundActiveDevice(response?.data?.device?.id);
   }
 
   // extracts currently playing trackID from response (could be nullish)
-  function extractTrackIDFromResponse(response) {
+  function extractTrackIDFromResponse(response: AxiosResponse) {
     return response?.data?.item?.id; //could be nullish
   }
 
@@ -118,7 +126,7 @@ export default function Home() {
       // isPlaying: response.data.is_playing
       // trackID: response.data.item.id
       // foundActiveDevice: response.data.device
-      const response = await getplaybackstate(accessToken.current);
+      const response: any = await getplaybackstate(accessToken.current);
       updateIsPlayingIfNecessary(response); //takes a playback state api response and updates the player UI accordingly
       updateActiveDevice(response);
 
@@ -130,7 +138,7 @@ export default function Home() {
           setTrackID(responseTrackID);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       if (error?.response?.status == 401) reauthenticateUser();
       updateIsPlayingIfNecessary(null);
     }
@@ -177,7 +185,7 @@ export default function Home() {
   }, [trackURL, debouncedSearch]);
 
   // get note from DB upon successful track search
-  async function fetchNote(tid) {
+  async function fetchNote(tid: any) {
     // code to load note into currNote
     // note: should i have this code in a useCallback func as the example has it?
     //   but then how would i make SURE it happens AFTER the user loads a new song,
@@ -213,7 +221,12 @@ export default function Home() {
     currNote.current = "";
   }
 
-  function setSongAndNoteViewStates(song_name, image_url, artist, note) {
+  function setSongAndNoteViewStates(
+    song_name: any,
+    image_url: any,
+    artist: any,
+    note: any
+  ) {
     console.log("setting view state to this note: ", note);
     setArtist(artist);
     setSongName(song_name);
@@ -256,7 +269,7 @@ export default function Home() {
       console.log("calling setsongandnoteviewstates from loadTrackDataFromID");
 
       setSongAndNoteViewStates(song_name, image_url, artist, note); //update display
-    } catch (error) {
+    } catch (error: any) {
       console.log("error: failed to get track ", tid);
       console.log(error);
       if (error?.response?.status == 401) {
@@ -271,7 +284,7 @@ export default function Home() {
 
       // if no device is active, Spotify rejects any requests to play tracks,
       // so we populate our play request with the first available device we can find.
-      let deviceIDToUse = null;
+      let deviceIDToUse = undefined;
       if (!foundActiveDevice) {
         const response = await getavailabledevices(accessToken.current);
         const devices = response?.data?.devices;
@@ -286,11 +299,11 @@ export default function Home() {
         }
       }
 
-      await playtrack(trackID, accessToken.current, deviceIDToUse, null);
+      await playtrack(trackID, accessToken.current, deviceIDToUse);
 
       // enable optimistic play button view updating
       setAwaitingPlayAPIResponse(false);
-    } catch (error) {
+    } catch (error: any) {
       if (error?.response?.status == 403) {
         alert("Device inaccessible; please change your Spotify output device.");
       }
@@ -352,7 +365,11 @@ export default function Home() {
     }
   }
 
-  async function saveNote({ user_id: uid, track_id: track_id, note: note }) {
+  async function saveNote({
+    user_id: uid,
+    track_id: track_id,
+    note: note,
+  }: any): Promise<void> {
     try {
       console.log("called save func :)");
       let { error } = await supabase.from("notes").upsert(
@@ -376,7 +393,7 @@ export default function Home() {
     }
   }
 
-  async function handleKeypress(note) {
+  async function handleNoteBoxKeypress(note: any) {
     // intercept note, replace timestamps with links
     // const replacedText = note.replace(
     //     /\b(\d+:\d+)\b/g,
@@ -471,8 +488,8 @@ export default function Home() {
                   id="notes"
                   contentEditable="true"
                   placeholder-text="Enter your notes here..."
-                  onInput={(e) => {
-                    handleKeypress(e.target.innerHTML);
+                  onInput={(e: any) => {
+                    handleNoteBoxKeypress(e.target.innerHTML);
                   }}
                   dangerouslySetInnerHTML={{
                     __html: DOMPurify.sanitize(currNote.current),

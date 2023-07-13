@@ -1,7 +1,10 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 
 // get track data from spotify
-export async function gettrack(trackID, access_token) {
+export async function gettrack(
+  trackID: string | undefined,
+  access_token: string | undefined
+) {
   if (!access_token) return;
   // console.log('getting track...')
   const TRACK_ENDPOINT = "https://api.spotify.com/v1/tracks/";
@@ -17,10 +20,10 @@ export async function gettrack(trackID, access_token) {
 
 // plays track upon clicking the play button, or clicking on a timestamp
 export async function playtrack(
-  trackID,
-  access_token,
-  device_id = null,
-  position_ms = null
+  trackID: string | undefined,
+  access_token: string | undefined,
+  device_id: string | undefined = undefined,
+  position_ms: number | undefined = undefined
 ) {
   console.log("about to play tracckkk");
   if (!access_token) return;
@@ -29,9 +32,10 @@ export async function playtrack(
   if (device_id) {
     url += `?device_id=${device_id}`;
   }
-  let data_obj = {
-    uris: [`spotify:track:${trackID}`],
-  };
+  let data_obj: any,
+    any = {
+      uris: [`spotify:track:${trackID}`],
+    };
   // only add in position if we have it, that way we resume playback from last position by default
   if (position_ms) {
     data_obj.position_ms = position_ms;
@@ -48,7 +52,9 @@ export async function playtrack(
 }
 
 // pauses whatever track is currently playing on Spotify
-export async function pausetrack(access_token) {
+export async function pausetrack(
+  access_token: string | undefined
+): Promise<AxiosResponse<any, any> | void> {
   if (!access_token) return;
   // console.log('asking Spotify to pause track...')
   const PAUSE_ENDPOINT = "https://api.spotify.com/v1/me/player/pause";
@@ -62,7 +68,9 @@ export async function pausetrack(access_token) {
 }
 
 // skip to previous track
-export async function skipPrevious(access_token) {
+export async function skipPrevious(
+  access_token: string | undefined
+): Promise<AxiosResponse<any, any> | void> {
   if (!access_token) return;
   const url = "https://api.spotify.com/v1/me/player/previous";
   const headers_obj = {
@@ -75,7 +83,9 @@ export async function skipPrevious(access_token) {
 }
 
 // pauses whatever track is currently playing on Spotify
-export async function skipNext(access_token) {
+export async function skipNext(
+  access_token: string | undefined
+): Promise<AxiosResponse<any, any> | void> {
   if (!access_token) return;
   const url = "https://api.spotify.com/v1/me/player/next";
   const headers_obj = {
@@ -88,7 +98,9 @@ export async function skipNext(access_token) {
 }
 
 // gets current track being played & currently playing
-export async function getplaybackstate(access_token) {
+export async function getplaybackstate(
+  access_token: string | undefined
+): Promise<AxiosResponse<any, any> | void> {
   if (!access_token) return;
   // console.log('getting playback state from spotify...')
   const PLAYER_ENDPOINT = "https://api.spotify.com/v1/me/player";
@@ -121,7 +133,7 @@ export async function getplaybackstate(access_token) {
 // }
 
 // get avail devices
-export async function getavailabledevices(access_token) {
+export async function getavailabledevices(access_token: string | undefined) {
   if (!access_token) return;
   console.log("getting avail devices from spotify...");
   const DEVICES_ENDPOINT = "https://api.spotify.com/v1/me/player/devices";
@@ -137,7 +149,7 @@ export async function getavailabledevices(access_token) {
 
 // params: track object
 // returns: song name, image url, and artists
-export function extractTrackDataFromResponse(track) {
+export function extractTrackDataFromResponse(track: any) {
   const song_name = track.name;
   let artistsString = "";
   for (let i = 0; i < track.artists.length; i++) {
@@ -148,7 +160,7 @@ export function extractTrackDataFromResponse(track) {
   return [song_name, image_url, artistsString];
 }
 
-export function extractTrackIDFromSongURL(turl) {
+export function extractTrackIDFromSongURL(turl: string) {
   const reg = turl.match(/spotify.com\/track\/([a-zA-Z0-9]+)\?.*$/);
   if (reg?.[1]) {
     const tid = reg?.[1];

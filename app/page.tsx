@@ -1,6 +1,7 @@
 "use client";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { spotifyLogin } from "../util/authutils";
+import Image from "next/image";
 
 // supabase auth tied to spotify provider auth
 export default function Home() {
@@ -33,7 +34,13 @@ export default function Home() {
           </p>
         </div>
         <div>
-          <img id="login-artwork" src="/icon.ico" alt="" />
+          <Image
+            id="login-artwork"
+            src="/icon.ico"
+            alt=""
+            height={640}
+            width={640}
+          />
         </div>
       </div>
     </main>

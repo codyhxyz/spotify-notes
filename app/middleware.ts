@@ -2,22 +2,22 @@
 // and https://noahflk.com/blog/supabase-auth-nextjs
 
 import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // intercepts new page loading, redirecting if session expired
-export async function middleware(req) {
+export async function middleware(req: NextRequest) {
   // verify auth
   const res = NextResponse.next(); //this is the route the user is attempting to access
   const supabase = createMiddlewareClient({ req, res });
   const {
-    data: { user },
+    data: { session },
   } = await supabase.auth.getSession();
 
-  if (user && req.nextUrl.pathname === "/") {
+  if (session && req.nextUrl.pathname === "/") {
     return NextResponse.redirect(new URL("/home", req.url));
   }
 
-  if (user) {
+  if (session) {
     return res;
   }
 
