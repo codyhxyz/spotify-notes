@@ -1,11 +1,5 @@
 "use client";
-import {
-  useEffect,
-  useState,
-  useCallback,
-  useRef,
-  MutableRefObject,
-} from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   gettrack,
   playtrack,
@@ -38,12 +32,12 @@ export default function Home() {
   const [imageURL, setImageURL] = useState<string>("");
   const [loadingNote, setLoadingNote] = useState<boolean>(false);
   const [foundActiveDevice, setFoundActiveDevice] = useState<boolean>(false);
-
   const [isPlaying, setIsPlaying] = useState<boolean>(false); //tracks whether user is playing music from spotify
   const accessToken = useRef<string>();
   const userID = useRef<string | undefined>(undefined);
   const [trackID, setTrackID] = useState<string | undefined>("");
   const currNote = useRef<string>("");
+  const [userIsTyping, setUserIsTyping] = useState<boolean>(false); //lock the song view for X sec after user last types
 
   // makes button clicks appear responsive by setting buttons to grey immediately until a response has been received
   const [awaitingPlayAPIResponse, setAwaitingPlayAPIResponse] =
@@ -80,6 +74,14 @@ export default function Home() {
   const debouncedSave = useCallback(
     debounce((uid, tid, note) => {
       saveNote({ user_id: uid, track_id: tid, note: note });
+    }, 500),
+    []
+  );
+
+  // reset userIsTyping state when user hasnt pressed a key for 0.5s
+  const setTypingFalseDebounced = useCallback(
+    debounce(() => {
+      setUserIsTyping(false);
     }, 500),
     []
   );
@@ -130,19 +132,22 @@ export default function Home() {
       updateIsPlayingIfNecessary(response); //takes a playback state api response and updates the player UI accordingly
       updateActiveDevice(response);
 
-      // if search box empty, load currently playing track as our note
-      const responseTrackID = extractTrackIDFromResponse(response);
-      if (!trackURL) {
-        if (responseTrackID && responseTrackID !== trackID) {
-          // display currently playing track
-          setTrackID(responseTrackID);
+      // only update view of current song when user is not actively typing
+      if (!userIsTyping) {
+        // if search box empty, load currently playing track as our note
+        if (!trackURL) {
+          const responseTrackID = extractTrackIDFromResponse(response);
+          // update trackID if different from api response
+          if (responseTrackID && responseTrackID !== trackID) {
+            setTrackID(responseTrackID); //causes re-render with new track data
+          }
         }
       }
     } catch (error: any) {
       if (error?.response?.status == 401) reauthenticateUser();
       updateIsPlayingIfNecessary(null);
     }
-  }, [artist, songName, trackID, trackURL]); //wrapping in usecallback prevents stale closure
+  }, [trackID, trackURL, userIsTyping]); //wrapping in usecallback prevents stale closure
 
   //listen to changes in trackId state and pull track data + update screen
   //deps: [trackID]
@@ -233,23 +238,6 @@ export default function Home() {
     setImageURL(image_url);
     currNote.current = note;
   }
-
-  // this code was helpful if we already had current song information from a different api call.
-  // i havent found a way for it to be useful.
-
-  // assumes response is from 'currently playing' api call
-  // trackID either taken from state if called by state update, otherwise passed manually as a parameter
-  // async function loadTrackDataUsingResponse(response, tid = trackID) {
-  //   clearSongAndNoteViewStates();
-
-  //   const track = response?.data?.item;
-  //   const [song_name, image_url, artist] = extractTrackDataFromResponse(track); //get track data
-  //   const note = await fetchNote(tid); //get user notes
-  //   console.log(
-  //     "calling setsongandnoteviewstates from loadTrackDataUsingResponse"
-  //   );
-  //   setSongAndNoteViewStates(song_name, image_url, artist, note); //update display
-  // }
 
   // fetch song from spotify by ID
   // and load user notes for that song from our database
@@ -401,7 +389,9 @@ export default function Home() {
     //   );
 
     currNote.current = note;
-    debouncedSave(userID.current, trackID, note);
+    setUserIsTyping(true);
+    setTypingFalseDebounced(); //reset the userIsTyping state a little while after last keypress
+    debouncedSave(userID.current, trackID, note); //save note
   }
 
   return (
@@ -500,7 +490,7 @@ export default function Home() {
           </>
         ) : (
           <>
-            {/* Please enter a valid song URL. (if this msg error persists, reload the page) */}
+            {/* Please enter a valid song URL. (if this error persists, reload the page) */}
           </>
         )}
       </div>

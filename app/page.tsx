@@ -34,13 +34,7 @@ export default function Home() {
           </p>
         </div>
         <div>
-          <Image
-            id="login-artwork"
-            src="/icon.ico"
-            alt=""
-            height={640}
-            width={640}
-          />
+          <img id="login-artwork" src="/icon.ico" alt="" />
         </div>
       </div>
     </main>
