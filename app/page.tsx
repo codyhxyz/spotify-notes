@@ -1,7 +1,6 @@
 "use client";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { spotifyLogin } from "../util/authutils";
-import Image from "next/image";
 
 // supabase auth tied to spotify provider auth
 export default function Home() {

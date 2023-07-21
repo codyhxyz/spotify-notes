@@ -37,7 +37,7 @@ export default function Home() {
   const userID = useRef<string | undefined>(undefined);
   const [trackID, setTrackID] = useState<string | undefined>("");
   const currNote = useRef<string>("");
-  const [userIsTyping, setUserIsTyping] = useState<boolean>(false); //lock the song view for X sec after user last types
+  const userIsTyping = useRef<boolean>(false); //lock the song view for X sec after user last types
 
   // makes button clicks appear responsive by setting buttons to grey immediately until a response has been received
   const [awaitingPlayAPIResponse, setAwaitingPlayAPIResponse] =
@@ -73,6 +73,9 @@ export default function Home() {
   // func uses useCallback so debounce isn't reset
   const debouncedSave = useCallback(
     debounce((uid, tid, note) => {
+      console.log(
+        "aye lassie! we just called the deboucne function INSIDE deboucnedSave, we did!"
+      );
       saveNote({ user_id: uid, track_id: tid, note: note });
     }, 500),
     []
@@ -81,7 +84,7 @@ export default function Home() {
   // reset userIsTyping state when user hasnt pressed a key for 0.5s
   const setTypingFalseDebounced = useCallback(
     debounce(() => {
-      setUserIsTyping(false);
+      userIsTyping.current = false;
     }, 500),
     []
   );
@@ -122,6 +125,7 @@ export default function Home() {
   // 1) update isPlaying state if necessary
   // 2) update foundActiveDevice state
   // 2) update trackID and load track if necessary
+  // deps: [trackID, trackURL]
   const loadPlaybackState = useCallback(async () => {
     try {
       // getplaybackstate's response has three bits of info we want:
@@ -133,7 +137,7 @@ export default function Home() {
       updateActiveDevice(response);
 
       // only update view of current song when user is not actively typing
-      if (!userIsTyping) {
+      if (!userIsTyping.current) {
         // if search box empty, load currently playing track as our note
         if (!trackURL) {
           const responseTrackID = extractTrackIDFromResponse(response);
@@ -147,7 +151,7 @@ export default function Home() {
       if (error?.response?.status == 401) reauthenticateUser();
       updateIsPlayingIfNecessary(null);
     }
-  }, [trackID, trackURL, userIsTyping]); //wrapping in usecallback prevents stale closure
+  }, [trackID, trackURL]); //wrapping in usecallback prevents stale closure
 
   //listen to changes in trackId state and pull track data + update screen
   //deps: [trackID]
@@ -389,7 +393,7 @@ export default function Home() {
     //   );
 
     currNote.current = note;
-    setUserIsTyping(true);
+    userIsTyping.current = true;
     setTypingFalseDebounced(); //reset the userIsTyping state a little while after last keypress
     debouncedSave(userID.current, trackID, note); //save note
   }

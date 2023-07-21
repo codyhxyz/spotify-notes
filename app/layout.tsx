@@ -1,6 +1,5 @@
 import "./globals.css";
 import { Inter, Open_Sans } from "next/font/google";
-import { Roboto } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"] });
 const opensans = Open_Sans({ subsets: ["latin"], weight: "500" });
