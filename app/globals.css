@@ -264,34 +264,8 @@ body,
   align-items: center;
 }
 
-/* for displays >= 900px */
-@media (max-width: 900px) {
-  /* Adjust the pixel value to the desired threshold */
-  #art-and-notes {
-    flex-direction: row;
-  }
-
-  #notes-display {
-    width: 99.5%;
-    margin: 3%;
-    border: 1px solid;
-    border-color: plum;
-  }
-
-  #notes {
-    height: 638px;
-  }
-
-  .media-button {
-    font-size: 1.8em;
-  }
-
-  #trackURL {
-    width: 90%;
-  }
-}
-/* for any display < 800px */
-@media (max-width: 899px) {
+/* for any display <= 640px */
+@media (max-width: 799px) {
   /* make notes go in column with album art */
   #art-and-notes {
     flex-direction: column;
@@ -317,6 +291,44 @@ body,
   /* make room between URL and logout button */
   #trackURL {
     width: 60%;
+  }
+}
+
+/* for displays such that 900px <= display size < 1600px */
+@media (min-width: 900px) and (max-width: 1599px) {
+  /* Adjust the pixel value to the desired threshold */
+  #art-and-notes {
+    flex-direction: row;
+  }
+
+  #notes-display {
+    width: 99.5%;
+    margin: 3%;
+    border: 1px solid;
+    border-color: plum;
+  }
+
+  #notes {
+    height: 638px;
+  }
+
+  .media-button {
+    font-size: 1.8em;
+  }
+
+  #trackURL {
+    width: 90%;
+  }
+}
+
+/* for displays >= 1600px */
+@media (min-width: 1600px) {
+  #notes {
+    height: 65vh;
+  }
+  #albumart-display {
+    height: 65vh;
+    object-fit: cover;
   }
 }
 
