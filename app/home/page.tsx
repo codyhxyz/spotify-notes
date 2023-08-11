@@ -18,7 +18,9 @@ import {
   SkipForwardIcon,
   PlayIcon,
   PauseIcon,
+  TimeStamp,
 } from "../../util/components";
+import { timestampRegexGlobal } from "@/util/miscutils";
 
 import { debounce } from "lodash";
 import DOMPurify from "dompurify";
@@ -49,6 +51,7 @@ export default function Home() {
   const playButtonColor = awaitingPlayAPIResponse ? "grey" : "white";
   const lSkipButtonColor = awaitingLSkipAPIResponse ? "grey" : "white";
   const rSkipButtonColor = awaitingRSkipAPIResponse ? "grey" : "white";
+  const [timestamps, setTimeStamps] = useState<Array<string>>([]);
 
   //get & store supabase and spotify session data
   useEffect(() => {
@@ -73,9 +76,6 @@ export default function Home() {
   // func uses useCallback so debounce isn't reset
   const debouncedSave = useCallback(
     debounce((uid, tid, note) => {
-      console.log(
-        "aye lassie! we just called the deboucne function INSIDE deboucnedSave, we did!"
-      );
       saveNote({ user_id: uid, track_id: tid, note: note });
     }, 500),
     []
@@ -258,6 +258,7 @@ export default function Home() {
       const [song_name, image_url, artist] =
         extractTrackDataFromResponse(track_data);
       const note = await fetchNote(tid); //get user notes
+      extractTimestamps(note); //extract timestamps on note load
       console.log("calling setsongandnoteviewstates from loadTrackDataFromID");
 
       setSongAndNoteViewStates(song_name, image_url, artist, note); //update display
@@ -269,6 +270,16 @@ export default function Home() {
       }
     }
   };
+
+  // extract timestamps from text
+  // triggers re-render by changing timestamps useState
+  function extractTimestamps(note: string) {
+    setTimeStamps([]); //reset timestamp list
+    const matches = note.matchAll(timestampRegexGlobal); //find all timestamps in text
+    for (const match of matches) {
+      setTimeStamps((prev) => [...prev, match[0]]); //store timestamps in state
+    }
+  }
 
   async function handlePlayButtonClick() {
     try {
@@ -386,17 +397,13 @@ export default function Home() {
   }
 
   async function handleNoteBoxKeypress(note: any) {
-    // intercept note, replace timestamps with links
-    // const replacedText = note.replace(
-    //     /\b(\d+:\d+)\b/g,
-    //     '<a href="$1">$1</a>'
-    //   );
-
     currNote.current = note;
     userIsTyping.current = true;
     setTypingFalseDebounced(); //reset the userIsTyping state a little while after last keypress
     debouncedSave(userID.current, trackID, note); //save note
   }
+
+  console.log("timestamps is: ", timestamps);
 
   return (
     <main>
@@ -465,6 +472,30 @@ export default function Home() {
               >
                 <SkipForwardIcon />
               </button>
+            </div>
+            <div className="timestamp-buttons">
+              {timestamps.map((timestamp, index) => (
+                <TimeStamp
+                  key={index}
+                  trackID={trackID}
+                  access_token={accessToken.current}
+                  device_id={undefined}
+                  stamp={timestamp}
+                />
+              ))}
+              {/* only show timestamp refresh button if >0 timestamps */}
+              {timestamps ? (
+                <button
+                  onClick={() => {
+                    extractTimestamps(currNote.current);
+                  }}
+                  title="Check for any timestamps user has typed since note load"
+                >
+                  🔃
+                </button>
+              ) : (
+                <></>
+              )}
             </div>
 
             <div id="art-and-notes">

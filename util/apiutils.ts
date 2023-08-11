@@ -23,23 +23,19 @@ export async function playtrack(
   trackID: string | undefined,
   access_token: string | undefined,
   device_id: string | undefined = undefined,
-  position_ms: number | undefined = undefined
+  position_ms: number = 0
 ) {
-  console.log("about to play tracckkk");
+  console.log("about to play tracckkk w position_ms ", position_ms);
   if (!access_token) return;
   let url = "https://api.spotify.com/v1/me/player/play";
   // include preferred device in our request if there is one
   if (device_id) {
     url += `?device_id=${device_id}`;
   }
-  let data_obj: any,
-    any = {
-      uris: [`spotify:track:${trackID}`],
-    };
-  // only add in position if we have it, that way we resume playback from last position by default
-  if (position_ms) {
-    data_obj.position_ms = position_ms;
-  }
+  let data_obj: any = {
+    uris: [`spotify:track:${trackID}`],
+  };
+  data_obj.position_ms = position_ms;
   const headers_obj = {
     headers: {
       Authorization: `Bearer ${access_token}`,
@@ -47,7 +43,6 @@ export async function playtrack(
     },
   };
   // console.log('trying to play track ID: ' + trackID)
-
   return axios.put(url, data_obj, headers_obj);
 }
 

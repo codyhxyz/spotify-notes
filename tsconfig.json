@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2015",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -32,7 +32,8 @@
     "app/middleware.ts",
     "app/components/auth-form.jsx",
     "app/home/page.tsx",
-    "app/page.tsx"
+    "app/page.tsx",
+    "util/components.jsx"
   ],
   "exclude": ["node_modules"]
 }

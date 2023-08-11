@@ -264,6 +264,20 @@ body,
   align-items: center;
 }
 
+.music-player {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* background-color: purple; */
+  margin-bottom: 15px;
+}
+.timestamp-buttons {
+  display: flex;
+  align-items: center;
+  /* background-color: purple; */
+  /* margin-bottom: 15px;  */
+}
+
 /* for any display <= 640px */
 @media (max-width: 799px) {
   /* make notes go in column with album art */
@@ -292,6 +306,11 @@ body,
   #trackURL {
     width: 60%;
   }
+
+  .timestamp-buttons {
+    margin-right: 0;
+    justify-content: center;
+  }
 }
 
 /* for displays such that 900px <= display size < 1600px */
@@ -319,6 +338,10 @@ body,
   #trackURL {
     width: 90%;
   }
+  .timestamp-buttons {
+    margin-right: 3%;
+    justify-content: right;
+  }
 }
 
 /* for displays >= 1600px */
@@ -329,6 +352,10 @@ body,
   #albumart-display {
     height: 65vh;
     object-fit: cover;
+  }
+  .timestamp-buttons {
+    margin-right: 3%;
+    justify-content: right;
   }
 }
 
@@ -395,14 +422,6 @@ p.text-message.sent:before {
   /* font-size: 1.8em; */
   text-align: center;
   /* border: 2px solid whitesmoke; */
-}
-
-.music-player {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  /* background-color: purple; */
-  margin-bottom: 15px;
 }
 
 .searchbar {

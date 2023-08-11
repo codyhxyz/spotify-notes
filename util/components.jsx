@@ -1,3 +1,5 @@
+import { playtrack } from "./apiutils";
+import { timestampToMilliseconds } from "./miscutils";
 export const SkipBackwardIcon = ({ fill = "none" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -47,3 +49,12 @@ export const PlayIcon = ({ fill = "none" }) => (
     <path d="M3 22V2l18 10-18 10z" />
   </svg>
 );
+
+export const TimeStamp = ({ trackID, access_token, device_id, stamp }) => {
+  const ms = timestampToMilliseconds(stamp);
+  return (
+    <button onClick={() => playtrack(trackID, access_token, device_id, ms)}>
+      {stamp}
+    </button>
+  );
+};
