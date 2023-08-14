@@ -21,8 +21,7 @@ import {
   TimeStamp,
 } from "../../util/components";
 import { timestampRegexGlobal } from "@/util/miscutils";
-
-import { debounce } from "lodash";
+import { useDebouncedCallback } from "use-debounce";
 import DOMPurify from "dompurify";
 import { AxiosResponse } from "axios";
 
@@ -73,21 +72,14 @@ export default function Home() {
     getSession();
   }, [supabase.auth]);
 
-  // func uses useCallback so debounce isn't reset
-  const debouncedSave = useCallback(
-    debounce((uid, tid, note) => {
-      saveNote({ user_id: uid, track_id: tid, note: note });
-    }, 500),
-    []
-  );
+  const debouncedSave = useDebouncedCallback((uid, tid, note) => {
+    saveNote({ user_id: uid, track_id: tid, note: note });
+  }, 500);
 
   // reset userIsTyping state when user hasnt pressed a key for 0.5s
-  const setTypingFalseDebounced = useCallback(
-    debounce(() => {
-      userIsTyping.current = false;
-    }, 500),
-    []
-  );
+  const setTypingFalseDebounced = useDebouncedCallback(() => {
+    userIsTyping.current = false;
+  }, 500);
 
   // force user back to login screen to refresh spotify token
   function reauthenticateUser() {
@@ -177,13 +169,13 @@ export default function Home() {
 
   // loads the song from the pasted URL
   // deps=[] since trackURL passed as param
-  const debouncedSearch = useCallback(
+  const debouncedSearch = useDebouncedCallback(
     // only gets called 500ms after last keypress in searchbox
-    debounce((trackURL) => {
+    (trackURL) => {
       const tid = extractTrackIDFromSongURL(trackURL);
       setTrackID(tid); //triggers loading of track onto display
-    }, 500),
-    []
+    },
+    500
   );
 
   // use searchbox for search
