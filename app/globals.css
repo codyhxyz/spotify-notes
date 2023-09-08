@@ -362,6 +362,9 @@ body,
 /* #logout-button {
   background-color: #24b47e;
 } */
+#nuke-button {
+  background-color: red;
+}
 
 input[disabled] {
   color: var(--custom-color-secondary);
@@ -426,6 +429,7 @@ p.text-message.sent:before {
 
 .searchbar {
   display: flex;
+  /* justify-content: space-between; */
   justify-content: space-between;
   margin: 15px;
   margin-left: 15%;

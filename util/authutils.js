@@ -11,7 +11,7 @@ export async function spotifyLogin(sb) {
       provider: "spotify",
       options: {
         scopes:
-          "user-read-email, user-modify-playback-state, user-read-playback-state, user-read-recently-played",
+          "user-read-email, user-modify-playback-state, user-read-playback-state",
         redirectTo: REDIRECT_URL,
       },
     });
@@ -22,5 +22,6 @@ export async function spotifyLogin(sb) {
 export async function spotifyLogout(sb) {
   console.log("attempting to log out user...");
   const { error } = await sb.auth.signOut();
+  location.href = "/"; //send user back to login screen
   return { error };
 }

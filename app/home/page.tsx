@@ -27,10 +27,14 @@ import { AxiosResponse } from "axios";
 
 export default function Home() {
   const supabase = createClientComponentClient();
-  const [trackURL, setTrackURL] = useState<string>(""); //change only on search by URL, not search by ID
+  const [acceptedEULA, setAcceptedEULA] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState<string>(""); //change only on search by URL, not search by ID
   const [songName, setSongName] = useState<string>("");
-  const [artist, setArtist] = useState<string>("");
+  const [artists, setArtists] = useState<string[]>([]);
+  const [trackURL, setTrackURL] = useState<string>("");
   const [imageURL, setImageURL] = useState<string>("");
+  const [albumURL, setAlbumURL] = useState<string>("");
+  const [artistURLs, setArtistURLs] = useState<string>("");
   const [loadingNote, setLoadingNote] = useState<boolean>(false);
   const [foundActiveDevice, setFoundActiveDevice] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false); //tracks whether user is playing music from spotify
@@ -68,9 +72,50 @@ export default function Home() {
       accessToken.current = token; //store spotify access token
       userID.current = data?.session?.user?.id; //store supabase user ID
       console.log("saving the following token: ", accessToken.current);
+      confirmEULA();
     }
     getSession();
   }, [supabase.auth]);
+
+  async function confirmEULA() {
+    let accepted = false;
+    try {
+      // check for prior EULA acceptance
+      let { data, error, status } = await supabase
+        .from("users")
+        .select("accepted_eula")
+        .eq("user_id", userID.current);
+      if (data && data[0]?.accepted_eula) {
+        setAcceptedEULA(true);
+      } else {
+        // prompt w EULA
+        if (
+          confirm(
+            "Spotify would like me to ask you whether you agree to our EULA in order to use our service:"
+          )
+        ) {
+          try {
+            // only ask for EULA confirmation once
+            const { data, error } = await supabase
+              .from("users")
+              .upsert({ user_id: userID.current, accepted_eula: true })
+              .select();
+            setAcceptedEULA(true);
+          } catch (error) {
+            console.log(error);
+          }
+        } else {
+          alert(
+            "In compliance with Spotify's policies, our app's functionality will be unavailable until the EULA is accepted."
+          );
+          spotifyLogout(supabase);
+        }
+      }
+    } catch (error) {
+      console.log("hi there, we got an error. Heres the error below : ");
+      console.log(error);
+    }
+  }
 
   const debouncedSave = useDebouncedCallback((uid, tid, note) => {
     saveNote({ user_id: uid, track_id: tid, note: note });
@@ -117,7 +162,7 @@ export default function Home() {
   // 1) update isPlaying state if necessary
   // 2) update foundActiveDevice state
   // 2) update trackID and load track if necessary
-  // deps: [trackID, trackURL]
+  // deps: [trackID, searchText]
   const loadPlaybackState = useCallback(async () => {
     try {
       // getplaybackstate's response has three bits of info we want:
@@ -131,7 +176,7 @@ export default function Home() {
       // only update view of current song when user is not actively typing
       if (!userIsTyping.current) {
         // if search box empty, load currently playing track as our note
-        if (!trackURL) {
+        if (!searchText) {
           const responseTrackID = extractTrackIDFromResponse(response);
           // update trackID if different from api response
           if (responseTrackID && responseTrackID !== trackID) {
@@ -143,7 +188,7 @@ export default function Home() {
       if (error?.response?.status == 401) reauthenticateUser();
       updateIsPlayingIfNecessary(null);
     }
-  }, [trackID, trackURL]); //wrapping in usecallback prevents stale closure
+  }, [trackID, searchText]); //wrapping in usecallback prevents stale closure
 
   //listen to changes in trackId state and pull track data + update screen
   //deps: [trackID]
@@ -168,11 +213,11 @@ export default function Home() {
   }, [loadPlaybackState]);
 
   // loads the song from the pasted URL
-  // deps=[] since trackURL passed as param
+  // deps=[] since searchText passed as param
   const debouncedSearch = useDebouncedCallback(
     // only gets called 500ms after last keypress in searchbox
-    (trackURL) => {
-      const tid = extractTrackIDFromSongURL(trackURL);
+    (searchText) => {
+      const tid = extractTrackIDFromSongURL(searchText);
       setTrackID(tid); //triggers loading of track onto display
     },
     500
@@ -181,9 +226,9 @@ export default function Home() {
   // use searchbox for search
   useEffect(() => {
     // search 500ms after last keystroke
-    debouncedSearch(trackURL);
+    debouncedSearch(searchText);
     // Clear the interval on unmount
-  }, [trackURL, debouncedSearch]);
+  }, [searchText, debouncedSearch]);
 
   // get note from DB upon successful track search
   async function fetchNote(tid: any) {
@@ -216,22 +261,31 @@ export default function Home() {
   }
 
   function clearSongAndNoteViewStates() {
-    setArtist("");
+    setArtists([]);
+    setTrackURL("");
     setSongName("");
     setImageURL("");
+    setAlbumURL("");
+    setArtistURLs("");
     currNote.current = "";
   }
 
   function setSongAndNoteViewStates(
     song_name: any,
     image_url: any,
-    artist: any,
-    note: any
+    track_url: any,
+    artists: any,
+    note: any,
+    album_url: any,
+    artist_urls: any
   ) {
     console.log("setting view state to this note: ", note);
-    setArtist(artist);
+    setArtists(artists);
+    setTrackURL(track_url);
     setSongName(song_name);
     setImageURL(image_url);
+    setAlbumURL(album_url);
+    setArtistURLs(artist_urls);
     currNote.current = note;
   }
 
@@ -247,13 +301,21 @@ export default function Home() {
     try {
       const response = await gettrack(tid, accessToken.current);
       const track_data = response?.data;
-      const [song_name, image_url, artist] =
+      const [song_name, image_url, track_url, album_url, artist_urls, artists] =
         extractTrackDataFromResponse(track_data);
       const note = await fetchNote(tid); //get user notes
       extractTimestamps(note); //extract timestamps on note load
       console.log("calling setsongandnoteviewstates from loadTrackDataFromID");
 
-      setSongAndNoteViewStates(song_name, image_url, artist, note); //update display
+      setSongAndNoteViewStates(
+        song_name,
+        image_url,
+        track_url,
+        artists,
+        note,
+        album_url,
+        artist_urls
+      ); //update display
     } catch (error: any) {
       console.log("error: failed to get track ", tid);
       console.log(error);
@@ -395,6 +457,19 @@ export default function Home() {
     debouncedSave(userID.current, trackID, note); //save note
   }
 
+  // delete all data from this user off of supabase
+  async function deleteUserData(uid: string | undefined) {
+    let { error } = await supabase.from("notes").delete().eq("user_id", uid);
+    if (error) {
+      alert(
+        "There was an error while deleting your data. Please refresh the page and try again."
+      );
+      console.log("about to log error");
+      console.log(error);
+      throw error;
+    }
+  }
+
   console.log("timestamps is: ", timestamps);
 
   return (
@@ -403,21 +478,44 @@ export default function Home() {
         <div className="searchbar">
           <input
             type="text"
-            id="trackURL"
+            id="searchText"
             onChange={(e) => {
-              setTrackURL(e.target.value);
+              setSearchText(e.target.value);
             }}
             placeholder="Enter Spotify track URL..."
           />
-          <button
-            id="logout-button"
-            onClick={() => {
-              spotifyLogout(supabase);
-              window.location.href = "/";
-            }}
-          >
-            Log out
-          </button>
+          <div>
+            <button
+              id="logout-button"
+              onClick={() => {
+                spotifyLogout(supabase);
+                window.location.href = "/";
+              }}
+            >
+              Log out
+            </button>
+            <button
+              id="nuke-button"
+              onClick={() => {
+                if (
+                  confirm("Are you sure you want to delete all your notes?")
+                ) {
+                  if (
+                    confirm(
+                      "Are you like super duper sure and not pressing this on accident?"
+                    )
+                  ) {
+                    deleteUserData(userID.current);
+                    alert("Successfully removed all user data.");
+                  }
+                }
+                spotifyLogout(supabase);
+                window.location.href = "/";
+              }}
+            >
+              Delete My Notes
+            </button>{" "}
+          </div>
         </div>
 
         {/* <button type="button" onClick={extractTrackIDFromSongURL}>Search</button>
@@ -425,11 +523,29 @@ export default function Home() {
 
 
         {/* conditional rendering */}
-        {userID.current && songName && artist && imageURL && !loadingNote ? (
+        {userID.current &&
+        songName &&
+        artists &&
+        imageURL &&
+        !loadingNote &&
+        acceptedEULA ? (
           <>
             <div>
               <h2 id="song-artist-names">
-                {songName} by {artist}{" "}
+                {/* TODO add artist URLs; make it render a list and add each url dynamically */}
+                <a href={trackURL}>{songName}</a> by{" "}
+                {artists.map((artist, index) => (
+                  <span key={index}>
+                    <a href={artistURLs[index]}>{artist}</a>
+                    {index < artists.length - 1 ? ", " : ""}
+                  </span>
+                ))}
+                <a href={trackURL}>
+                  <img
+                    src="/Spotify_Icon_RGB_White.png"
+                    style={{ width: "70px" }}
+                  />
+                </a>
               </h2>
             </div>
             <div className="music-player">
@@ -493,11 +609,13 @@ export default function Home() {
             <div id="art-and-notes">
               {/* left side */}
               <div id="albumart">
-                <img
-                  alt="track cover art"
-                  src={imageURL}
-                  id="albumart-display"
-                />
+                <a href={albumURL}>
+                  <img
+                    alt="track cover art"
+                    src={imageURL}
+                    id="albumart-display"
+                  />{" "}
+                </a>
               </div>
               {/* right side */}
               <div id="notes-display">
@@ -516,9 +634,7 @@ export default function Home() {
             </div>
           </>
         ) : (
-          <>
-            {/* Please enter a valid song URL. (if this error persists, reload the page) */}
-          </>
+          <>~try playing a song on Spotify~</>
         )}
       </div>
     </main>

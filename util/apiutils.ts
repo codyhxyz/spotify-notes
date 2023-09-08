@@ -108,25 +108,6 @@ export async function getplaybackstate(
   return axios.get(PLAYER_ENDPOINT, headers_obj);
 }
 
-// get most recently played track
-// note that this has intended behavior and so i have chosen not to use it so far
-// export async function getrecentlyplayed(access_token, num_needed = 1) {
-//   if (!access_token) return;
-//   // console.log('getting recently played from spotify...')
-//   const RECENT_ENDPOINT =
-//     "https://api.spotify.com/v1/me/player/recently-played";
-//   const config = {
-//     headers: {
-//       Authorization: `Bearer ${access_token}`,
-//     },
-//     data: {
-//       limit: num_needed,
-//     },
-//   };
-
-//   return axios.get(RECENT_ENDPOINT, config);
-// }
-
 // get avail devices
 export async function getavailabledevices(access_token: string | undefined) {
   if (!access_token) return;
@@ -146,13 +127,17 @@ export async function getavailabledevices(access_token: string | undefined) {
 // returns: song name, image url, and artists
 export function extractTrackDataFromResponse(track: any) {
   const song_name = track.name;
-  let artistsString = "";
+  let artists = [];
+  let artist_urls = [];
   for (let i = 0; i < track.artists.length; i++) {
-    if (i != 0) artistsString += ", ";
-    artistsString += track.artists[i].name;
+    let curr_artist = track.artists[i].name;
+    artists.push(curr_artist);
+    artist_urls.push(track.artists[i].external_urls["spotify"]);
   }
   const image_url = track.album.images[0].url;
-  return [song_name, image_url, artistsString];
+  const track_url = track.external_urls["spotify"];
+  const album_url = track.album.external_urls["spotify"];
+  return [song_name, image_url, track_url, album_url, artist_urls, artists];
 }
 
 export function extractTrackIDFromSongURL(turl: string) {

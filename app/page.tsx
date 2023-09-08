@@ -32,6 +32,13 @@ export default function Home() {
             And this app is still in pre-alpha--we could lose your data!
           </p>
         </div>
+        <p>
+          {" "}
+          <a href="https://raw.githubusercontent.com/ydoc5212/spotify-notes/master/PRIVACY_POLICY.md?token=GHSAT0AAAAAACHJPPBZTMECVE5WYO6FA4JUZH2MHZQ">
+            {" "}
+            Privacy Policy
+          </a>
+        </p>
         <div>
           <img id="login-artwork" src="/icon.ico" alt="" />
         </div>
