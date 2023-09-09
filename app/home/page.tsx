@@ -592,7 +592,7 @@ export default function Home() {
                 />
               ))}
               {/* only show timestamp refresh button if >0 timestamps */}
-              {timestamps ? (
+              {/* {timestamps ? (
                 <button
                   onClick={() => {
                     extractTimestamps(currNote.current);
@@ -603,7 +603,7 @@ export default function Home() {
                 </button>
               ) : (
                 <></>
-              )}
+              )} */}
             </div>
 
             <div id="art-and-notes">
