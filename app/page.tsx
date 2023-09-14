@@ -10,7 +10,7 @@ export default function Home() {
     <main>
       <div className="login-div">
         <div>
-          <h1>Welcome to My Spotify Notes! </h1>
+          <h1>Welcome to My Song Notes! </h1>
 
           <button
             id="login-button"
@@ -28,9 +28,7 @@ export default function Home() {
             Please note that full navigation features are only possible on{" "}
             <b>Spotify Premium</b> accounts.
           </p>
-          <p className="text-message">
-            And this app is still in pre-alpha--we could lose your data!
-          </p>
+          <p className="text-message">Hope you enjoy!</p>
         </div>
         <p>
           {" "}

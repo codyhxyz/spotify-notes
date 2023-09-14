@@ -5,7 +5,7 @@ const inter = Inter({ subsets: ["latin"] });
 const opensans = Open_Sans({ subsets: ["latin"], weight: "500" });
 
 export const metadata = {
-  title: "My Spotify Notes",
+  title: "My Song Notes",
   description: "Connecting your thoughts about music",
 };
 
