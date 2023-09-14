@@ -33,8 +33,8 @@ export default function Home() {
             <ul>
               <li style={{ color: "black" }}>
                 user-read-playback-state allows us to see the current song
-                you're playing so we can display its information and so we can
-                associate your notes with that song.{" "}
+                you&lsquo;re playing so we can display its information and so we
+                can associate your notes with that song.{" "}
               </li>
               <li style={{ color: "black" }}>
                 user-modify-playback-state allows you to skip, play, pause songs
