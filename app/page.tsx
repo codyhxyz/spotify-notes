@@ -28,7 +28,24 @@ export default function Home() {
             Please note that full navigation features are only possible on{" "}
             <b>Spotify Premium</b> accounts.
           </p>
-          <p className="text-message">Hope you enjoy!</p>
+          <p className="text-message">
+            How we use permissions:
+            <ul>
+              <li style={{ color: "black" }}>
+                user-read-playback-state allows us to see the current song
+                you're playing so we can display its information and so we can
+                associate your notes with that song.{" "}
+              </li>
+              <li style={{ color: "black" }}>
+                user-modify-playback-state allows you to skip, play, pause songs
+                from our app.
+              </li>
+              <li style={{ color: "black" }}>
+                user-read-email allows us to associate your email with your
+                spotify account for logging into our website.
+              </li>
+            </ul>
+          </p>
         </div>
         <p>
           {" "}

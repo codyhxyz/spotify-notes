@@ -195,7 +195,7 @@ export default function Home() {
   useEffect(() => {
     //updates state of the app like track name
     console.log(
-      "calling loadTrackDatFromID() from useeffect since trackID changed"
+      "calling loadTrackDataFromID() from useeffect since trackID changed"
     );
     loadTrackDataFromID();
   }, [trackID]);
