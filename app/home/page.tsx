@@ -513,7 +513,7 @@ export default function Home() {
                 window.location.href = "/";
               }}
             >
-              Delete My Notes
+              Delete My Account
             </button>{" "}
           </div>
         </div>
