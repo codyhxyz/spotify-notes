@@ -91,7 +91,7 @@ export default function Home() {
         // prompt w EULA
         if (
           confirm(
-            "Spotify requires us to ask you to agree to our EULA. By clicking OK, you acknowledge that you have read and agree to be bound by the terms and conditions of this EULA. You can read it here: https://raw.githubusercontent.com/ydoc5212/spotify-notes/master/EULA.md?token=GHSAT0AAAAAACHJPPBYVNKK73PTKFIJOFHQZH2PFNQ"
+            "Spotify requires us to ask you to agree to our EULA. By clicking OK, you acknowledge that you have read and agree to be bound by the terms and conditions of this EULA. You can read it here: https://raw.githubusercontent.com/ydoc5212/spotify-notes/master/EULA.md"
           )
         ) {
           try {
