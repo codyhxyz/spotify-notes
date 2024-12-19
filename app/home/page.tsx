@@ -475,7 +475,7 @@ export default function Home() {
   return (
     <main>
       <div>
-        <div className="searchbar">
+        <div>
           {/* <input
             type="text"
             id="searchText"
