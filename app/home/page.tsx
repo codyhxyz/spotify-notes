@@ -476,14 +476,14 @@ export default function Home() {
     <main>
       <div>
         <div className="searchbar">
-          <input
+          {/* <input
             type="text"
             id="searchText"
             onChange={(e) => {
               setSearchText(e.target.value);
             }}
             placeholder="Enter Spotify track URL..."
-          />
+          /> */}
           <div>
             <button
               id="logout-button"
