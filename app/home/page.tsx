@@ -475,7 +475,7 @@ export default function Home() {
   return (
     <main>
       <div>
-        <div>
+        <div className="searchbar">
           {/* <input
             type="text"
             id="searchText"
@@ -543,7 +543,7 @@ export default function Home() {
                 <a href={trackURL}>
                   <img
                     src="/Spotify_Icon_RGB_White.png"
-                    style={{ width: "70px" }}
+                    style={{ width: "35px" }}
                   />
                 </a>
               </h2>
