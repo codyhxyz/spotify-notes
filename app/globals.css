@@ -428,9 +428,9 @@ p.text-message.sent:before {
 }
 
 .searchbar {
-  display: flex;
+  /* display: flex; */
+  align-content: right;
   /* justify-content: space-between; */
-  justify-content: space-between;
   margin: 15px;
   margin-left: 15%;
   margin-right: 15%;
