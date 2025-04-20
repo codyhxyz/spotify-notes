@@ -1,3 +1,8 @@
+## Note to self
+
+Mysongnotes.vercel.app lets u drag in files or somehow tracks what ur playing to take notes on beyond just spotify.
+
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
