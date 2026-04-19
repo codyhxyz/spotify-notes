@@ -1,13 +1,9 @@
 import "./globals.css";
-import { Inter, Open_Sans } from "next/font/google";
 import { Providers } from "./providers";
-
-const inter = Inter({ subsets: ["latin"] });
-const opensans = Open_Sans({ subsets: ["latin"], weight: "500" });
 
 export const metadata = {
   title: "My Song Notes",
-  description: "Connecting your thoughts about music",
+  description: "A private journal for the songs you're listening to.",
 };
 
 export default function RootLayout({
@@ -17,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={opensans.className}>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

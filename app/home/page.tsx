@@ -25,10 +25,18 @@ import { useDebouncedCallback } from "use-debounce";
 import DOMPurify from "dompurify";
 import { AxiosResponse } from "axios";
 
+function fmtTime(ms: number | undefined) {
+  if (!ms || ms < 0) return "0:00";
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 export default function Home() {
   const { data: session, status } = useSession();
   const [acceptedEULA, setAcceptedEULA] = useState<boolean>(false);
-  const [searchText, setSearchText] = useState<string>(""); //change only on search by URL, not search by ID
+  const [searchText] = useState<string>(""); // reserved for future URL-search feature
   const [songName, setSongName] = useState<string>("");
   const [artists, setArtists] = useState<string[]>([]);
   const [trackURL, setTrackURL] = useState<string>("");
@@ -37,30 +45,25 @@ export default function Home() {
   const [artistURLs, setArtistURLs] = useState<string>("");
   const [loadingNote, setLoadingNote] = useState<boolean>(false);
   const [foundActiveDevice, setFoundActiveDevice] = useState<boolean>(false);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false); //tracks whether user is playing music from spotify
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [progressMs, setProgressMs] = useState<number>(0);
+  const [durationMs, setDurationMs] = useState<number>(0);
   const accessToken = useRef<string>();
   const userID = useRef<string | undefined>(undefined);
   const [trackID, setTrackID] = useState<string | undefined>("");
   const currNote = useRef<string>("");
-  const userIsTyping = useRef<boolean>(false); //lock the song view for X sec after user last types
+  const userIsTyping = useRef<boolean>(false);
 
-  // makes button clicks appear responsive by setting buttons to grey immediately until a response has been received
   const [awaitingPlayAPIResponse, setAwaitingPlayAPIResponse] =
     useState<boolean>(false);
   const [awaitingLSkipAPIResponse, setAwaitingLSkipAPIResponse] =
     useState<boolean>(false);
   const [awaitingRSkipAPIResponse, setAwaitingRSkipAPIResponse] =
     useState<boolean>(false);
-  const playButtonColor = awaitingPlayAPIResponse ? "grey" : "white";
-  const lSkipButtonColor = awaitingLSkipAPIResponse ? "grey" : "white";
-  const rSkipButtonColor = awaitingRSkipAPIResponse ? "grey" : "white";
+
   const [timestamps, setTimeStamps] = useState<Array<string>>([]);
 
-  // Pull the Spotify access token + canonical user id from the NextAuth
-  // session. The session callback in lib/auth.ts exposes both. If the session
-  // is loading or unauthenticated, bail until it's ready (middleware will
-  // redirect unauthenticated requests, so the unauthenticated branch is
-  // mostly a safety net).
+  // NextAuth session -> access token + canonical Spotify user id.
   useEffect(() => {
     if (status !== "authenticated") return;
     accessToken.current = session?.accessToken;
@@ -69,15 +72,38 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, session?.accessToken, session?.user?.id]);
 
+  // Feed album art into the ambient backdrop CSS variable.
+  useEffect(() => {
+    if (imageURL) {
+      document.body.style.setProperty("--album-image", `url("${imageURL}")`);
+    } else {
+      document.body.style.removeProperty("--album-image");
+    }
+  }, [imageURL]);
+
+  // Pointer parallax for the bloom highlight.
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      document.body.style.setProperty(
+        "--mx",
+        `${(e.clientX / window.innerWidth) * 100}%`
+      );
+      document.body.style.setProperty(
+        "--my",
+        `${(e.clientY / window.innerHeight) * 100}%`
+      );
+    };
+    document.addEventListener("pointermove", onMove);
+    return () => document.removeEventListener("pointermove", onMove);
+  }, []);
+
   async function confirmEULA() {
     try {
-      // check for prior EULA acceptance
       const res = await fetch("/api/users");
       const json = await res.json();
       if (json?.accepted_eula) {
         setAcceptedEULA(true);
       } else {
-        // prompt w EULA
         if (
           confirm(
             "Spotify requires us to ask you to agree to our EULA. By clicking OK, you acknowledge that you have read and agree to be bound by the terms and conditions of this EULA. You can read it here: https://raw.githubusercontent.com/codyhxyz/spotify-notes/master/EULA.md"
@@ -101,7 +127,6 @@ export default function Home() {
         }
       }
     } catch (error) {
-      console.log("hi there, we got an error. Heres the error below : ");
       console.log(error);
     }
   }
@@ -110,116 +135,63 @@ export default function Home() {
     saveNote({ track_id: tid, note });
   }, 500);
 
-  // reset userIsTyping state when user hasnt pressed a key for 0.5s
   const setTypingFalseDebounced = useDebouncedCallback(() => {
     userIsTyping.current = false;
   }, 500);
 
-  // force user back to login screen to refresh spotify token
   function reauthenticateUser() {
     window.location.href = "/";
   }
 
-  // set play button state using API response (which could be malformed)
   function updateIsPlayingIfNecessary(response: AxiosResponse | null) {
-    // if (awaitingPlayAPIResponse) return; // enable 'optimistic UI'
     if (response?.data?.is_playing) {
-      if (response.status == 204) {
-        // console.log("setting isplaying false");
-        setIsPlaying(false);
-      } else {
-        // console.log("setting isplaying to: ", response.data.is_playing);
-        setIsPlaying(response.data.is_playing);
-      }
+      setIsPlaying(response.status == 204 ? false : response.data.is_playing);
     } else {
-      // console.log("setting isplaying to false. response is : ", response);
       setIsPlaying(false);
     }
   }
 
-  // update foundActiveDevice state with response from getplaybackstate API call
   function updateActiveDevice(response: AxiosResponse) {
     setFoundActiveDevice(response?.data?.device?.id);
   }
 
-  // extracts currently playing trackID from response (could be nullish)
   function extractTrackIDFromResponse(response: AxiosResponse) {
-    return response?.data?.item?.id; //could be nullish
+    return response?.data?.item?.id;
   }
 
-  // makes Playback State API call & uses it to:
-  // 1) update isPlaying state if necessary
-  // 2) update foundActiveDevice state
-  // 2) update trackID and load track if necessary
-  // deps: [trackID, searchText]
   const loadPlaybackState = useCallback(async () => {
     try {
-      // getplaybackstate's response has three bits of info we want:
-      // isPlaying: response.data.is_playing
-      // trackID: response.data.item.id
-      // foundActiveDevice: response.data.device
       const response: any = await getplaybackstate(accessToken.current);
-      updateIsPlayingIfNecessary(response); //takes a playback state api response and updates the player UI accordingly
+      updateIsPlayingIfNecessary(response);
       updateActiveDevice(response);
+      // progress bar data
+      const prog = response?.data?.progress_ms;
+      const dur = response?.data?.item?.duration_ms;
+      if (typeof prog === "number") setProgressMs(prog);
+      if (typeof dur === "number") setDurationMs(dur);
 
-      // only update view of current song when user is not actively typing
-      if (!userIsTyping.current) {
-        // if search box empty, load currently playing track as our note
-        if (!searchText) {
-          const responseTrackID = extractTrackIDFromResponse(response);
-          // update trackID if different from api response
-          if (responseTrackID && responseTrackID !== trackID) {
-            setTrackID(responseTrackID); //causes re-render with new track data
-          }
+      if (!userIsTyping.current && !searchText) {
+        const responseTrackID = extractTrackIDFromResponse(response);
+        if (responseTrackID && responseTrackID !== trackID) {
+          setTrackID(responseTrackID);
         }
       }
     } catch (error: any) {
       if (error?.response?.status == 401) reauthenticateUser();
       updateIsPlayingIfNecessary(null);
     }
-  }, [trackID, searchText]); //wrapping in usecallback prevents stale closure
+  }, [trackID, searchText]);
 
-  //listen to changes in trackId state and pull track data + update screen
-  //deps: [trackID]
   useEffect(() => {
-    //updates state of the app like track name
-    console.log(
-      "calling loadTrackDataFromID() from useeffect since trackID changed"
-    );
     loadTrackDataFromID();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trackID]);
 
-  //constructor
-  //deps: []
   useEffect(() => {
-    const interval = setInterval(() => {
-      loadPlaybackState();
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
+    const interval = setInterval(loadPlaybackState, 1000);
+    return () => clearInterval(interval);
   }, [loadPlaybackState]);
 
-  // loads the song from the pasted URL
-  // deps=[] since searchText passed as param
-  const debouncedSearch = useDebouncedCallback(
-    // only gets called 500ms after last keypress in searchbox
-    (searchText) => {
-      const tid = extractTrackIDFromSongURL(searchText);
-      setTrackID(tid); //triggers loading of track onto display
-    },
-    500
-  );
-
-  // use searchbox for search
-  useEffect(() => {
-    // search 500ms after last keystroke
-    debouncedSearch(searchText);
-    // Clear the interval on unmount
-  }, [searchText, debouncedSearch]);
-
-  // get note from DB upon successful track search
   async function fetchNote(tid: any) {
     let note = "";
     try {
@@ -228,13 +200,8 @@ export default function Home() {
         `/api/notes?track_id=${encodeURIComponent(tid)}`
       );
       const json = await res.json();
-      console.log("using this trackID in our database pull", tid);
-      if (json?.note) {
-        console.log("successfully got note from database, it is: ", json.note);
-        note = json.note;
-      }
+      if (json?.note) note = json.note;
     } catch (error) {
-      console.log("hi there, we got an error. Heres the error below : ");
       console.log(error);
     } finally {
       setLoadingNote(false);
@@ -261,7 +228,6 @@ export default function Home() {
     album_url: any,
     artist_urls: any
   ) {
-    console.log("setting view state to this note: ", note);
     setArtists(artists);
     setTrackURL(track_url);
     setSongName(song_name);
@@ -271,23 +237,18 @@ export default function Home() {
     currNote.current = note;
   }
 
-  // fetch song from spotify by ID
-  // and load user notes for that song from our database
-  // this func is triggered by a useEffect() with deps[trackID]
   const loadTrackDataFromID = async () => {
     if (!accessToken.current || !trackID) return;
 
-    const tid = trackID; //trackID assumed to be current
-    console.log("trackID which should be current is ", trackID);
+    const tid = trackID;
     clearSongAndNoteViewStates();
     try {
       const response = await gettrack(tid, accessToken.current);
       const track_data = response?.data;
       const [song_name, image_url, track_url, album_url, artist_urls, artists] =
         extractTrackDataFromResponse(track_data);
-      const note = await fetchNote(tid); //get user notes
-      extractTimestamps(note); //extract timestamps on note load
-      console.log("calling setsongandnoteviewstates from loadTrackDataFromID");
+      const note = await fetchNote(tid);
+      extractTimestamps(note);
 
       setSongAndNoteViewStates(
         song_name,
@@ -297,76 +258,55 @@ export default function Home() {
         note,
         album_url,
         artist_urls
-      ); //update display
+      );
     } catch (error: any) {
-      console.log("error: failed to get track ", tid);
-      console.log(error);
-      if (error?.response?.status == 401) {
-        reauthenticateUser();
-      }
+      console.log("error: failed to get track ", tid, error);
+      if (error?.response?.status == 401) reauthenticateUser();
     }
   };
 
-  // extract timestamps from text
-  // triggers re-render by changing timestamps useState
   function extractTimestamps(note: string) {
-    setTimeStamps([]); //reset timestamp list
-    const matches = note.matchAll(timestampRegexGlobal); //find all timestamps in text
+    setTimeStamps([]);
+    const matches = note.matchAll(timestampRegexGlobal);
     for (const match of matches) {
-      setTimeStamps((prev) => [...prev, match[0]]); //store timestamps in state
+      setTimeStamps((prev) => [...prev, match[0]]);
     }
   }
 
   async function handlePlayButtonClick() {
     try {
       setAwaitingPlayAPIResponse(true);
-
-      // if no device is active, Spotify rejects any requests to play tracks,
-      // so we populate our play request with the first available device we can find.
       let deviceIDToUse = undefined;
       if (!foundActiveDevice) {
         const response = await getavailabledevices(accessToken.current);
         const devices = response?.data?.devices;
         if (devices && devices.length > 0) {
           for (let i = 0; i < devices.length; i++) {
-            // gets the first non-restricted device
             if (devices[i]?.id && !devices[i]?.is_restricted) {
               deviceIDToUse = devices[i].id;
-              console.log("switching to device ID ", deviceIDToUse);
             }
           }
         }
       }
-
       await playtrack(trackID, accessToken.current, deviceIDToUse);
-
-      // enable optimistic play button view updating
-      setAwaitingPlayAPIResponse(false);
     } catch (error: any) {
       if (error?.response?.status == 403) {
         alert("Device inaccessible; please change your Spotify output device.");
       }
-      console.log("error playing track");
       console.log(error);
     } finally {
-      setAwaitingPlayAPIResponse(false); //default
+      setAwaitingPlayAPIResponse(false);
     }
   }
 
   async function handlePauseButtonClick() {
     try {
-      // enable optimistic play button view updating
       setAwaitingPlayAPIResponse(true);
-
       await pausetrack(accessToken.current);
-
-      // enable optimistic play button view updating
-      setAwaitingPlayAPIResponse(false);
     } catch (error) {
-      console.log("error pausing track (see below):");
       console.log(error);
     } finally {
-      setAwaitingPlayAPIResponse(false); //default
+      setAwaitingPlayAPIResponse(false);
     }
   }
 
@@ -374,16 +314,11 @@ export default function Home() {
     try {
       setAwaitingLSkipAPIResponse(true);
       await skipPrevious(accessToken.current);
-      setAwaitingLSkipAPIResponse(false);
-      await loadPlaybackState(); //make extra function call to see song w less latency
-      console.log(
-        "returned back from my await! yiu should see a song on next refresh!"
-      );
+      await loadPlaybackState();
     } catch (error) {
-      console.log("error backing track (see below):");
       console.log(error);
     } finally {
-      setAwaitingLSkipAPIResponse(false); //default
+      setAwaitingLSkipAPIResponse(false);
     }
   }
 
@@ -391,16 +326,11 @@ export default function Home() {
     try {
       setAwaitingRSkipAPIResponse(true);
       await skipNext(accessToken.current);
-      setAwaitingRSkipAPIResponse(false);
-      await loadPlaybackState(); //make extra function call to see song w less latency
-      console.log(
-        "returned back from my await! yiu should see a song on next refresh!"
-      );
+      await loadPlaybackState();
     } catch (error) {
-      console.log("error forwarding track (see below):");
       console.log(error);
     } finally {
-      setAwaitingRSkipAPIResponse(false); //default
+      setAwaitingRSkipAPIResponse(false);
     }
   }
 
@@ -412,32 +342,27 @@ export default function Home() {
     note: string;
   }): Promise<void> {
     try {
-      console.log("called save func :)");
       const res = await fetch("/api/notes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ track_id, note }),
       });
       if (!res.ok) throw new Error(`save failed: ${res.status}`);
-      // TODO make a less intrusive way to display that note has been saved successfully
-      // eg, flash the note border Forest Green for a few seconds after last save.
     } catch (error) {
       console.log(error);
-      console.log("just logged an error ^");
       alert(
         "Error saving note! Please copy your note, save it somewhere else, and refresh."
       );
     }
   }
 
-  async function handleNoteBoxKeypress(note: any) {
+  function handleNoteBoxKeypress(note: any) {
     currNote.current = note;
     userIsTyping.current = true;
-    setTypingFalseDebounced(); //reset the userIsTyping state a little while after last keypress
-    debouncedSave(trackID, note); //save note
+    setTypingFalseDebounced();
+    debouncedSave(trackID, note);
   }
 
-  // delete all notes for this user from the DB
   async function deleteUserData() {
     const res = await fetch("/api/notes", { method: "DELETE" });
     if (!res.ok) {
@@ -448,23 +373,31 @@ export default function Home() {
     }
   }
 
-  console.log("timestamps is: ", timestamps);
+  const hasTrack = Boolean(
+    userID.current && songName && artists && imageURL && acceptedEULA
+  );
+  const progressPct = durationMs
+    ? Math.min(100, (progressMs / durationMs) * 100)
+    : 0;
+  const remainingMs = Math.max(0, durationMs - progressMs);
 
   return (
-    <main>
-      <div>
-        <div className="searchbar">
-          {/* <input
-            type="text"
-            id="searchText"
-            onChange={(e) => {
-              setSearchText(e.target.value);
-            }}
-            placeholder="Enter Spotify track URL..."
-          /> */}
-          <div>
+    <>
+      <div className="art-backdrop" aria-hidden />
+      <main className="app-shell">
+        <header className="topbar fade">
+          <div className="brand">
+            <span className="orb" aria-hidden />
+            My&nbsp;<b><em>Song</em>&nbsp;Notes</b>
+          </div>
+          <div className="top-right">
+            {hasTrack && (
+              <span className="chip live">
+                {isPlaying ? "Playing" : "Paused"}
+              </span>
+            )}
             <button
-              id="logout-button"
+              className="chip"
               onClick={() => {
                 spotifyLogout();
                 window.location.href = "/";
@@ -473,148 +406,168 @@ export default function Home() {
               Log out
             </button>
             <button
-              id="nuke-button"
-              onClick={() => {
+              className="chip danger"
+              onClick={async () => {
                 if (
-                  confirm("Are you sure you want to delete all your notes?")
+                  confirm("Delete every note you've ever saved? This can't be undone.") &&
+                  confirm("Really sure? Last chance.")
                 ) {
-                  if (
-                    confirm(
-                      "Are you like super duper sure and not pressing this on accident?"
-                    )
-                  ) {
-                    deleteUserData();
-                    alert("Successfully removed all user data.");
+                  try {
+                    await deleteUserData();
+                    alert("Removed all notes.");
+                  } catch {
+                    return;
                   }
+                  spotifyLogout();
+                  window.location.href = "/";
                 }
-                spotifyLogout();
-                window.location.href = "/";
               }}
             >
-              Delete My Account
-            </button>{" "}
+              Erase all
+            </button>
           </div>
-        </div>
+        </header>
 
-        {/* <button type="button" onClick={extractTrackIDFromSongURL}>Search</button>
-        </div>
-
-
-        {/* conditional rendering */}
-        {userID.current &&
-        songName &&
-        artists &&
-        imageURL &&
-        !loadingNote &&
-        acceptedEULA ? (
+        {hasTrack && !loadingNote ? (
           <>
-            <div>
-              <h2 id="song-artist-names">
-                {/* TODO add artist URLs; make it render a list and add each url dynamically */}
-                <a href={trackURL}>{songName}</a> by{" "}
-                {artists.map((artist, index) => (
-                  <span key={index}>
-                    <a href={artistURLs[index]}>{artist}</a>
-                    {index < artists.length - 1 ? ", " : ""}
-                  </span>
-                ))}
-                <a href={trackURL}>
-                  <img
-                    src="/Spotify_Icon_RGB_White.png"
-                    style={{ width: "35px" }}
-                  />
-                </a>
-              </h2>
-            </div>
-            <div className="music-player">
-              <button
-                className="media-button"
-                style={{ backgroundColor: lSkipButtonColor }}
-                onClick={() => {
-                  handlePrevButtonClick();
-                }}
-              >
-                <SkipBackwardIcon />
-              </button>
-
-              <button
-                className="media-button"
-                style={{ backgroundColor: playButtonColor }}
-                onClick={() => {
-                  isPlaying
-                    ? handlePauseButtonClick()
-                    : handlePlayButtonClick();
-                }}
-              >
-                {isPlaying ? <PauseIcon /> : <PlayIcon />}
-              </button>
-
-              <button
-                className="media-button"
-                style={{ backgroundColor: rSkipButtonColor }}
-                onClick={() => {
-                  handleNextButtonClick();
-                }}
-              >
-                <SkipForwardIcon />
-              </button>
-            </div>
-            <div className="timestamp-buttons">
-              {timestamps.map((timestamp, index) => (
-                <TimeStamp
-                  key={index}
-                  trackID={trackID}
-                  access_token={accessToken.current}
-                  device_id={undefined}
-                  stamp={timestamp}
-                />
-              ))}
-              {/* only show timestamp refresh button if >0 timestamps */}
-              {/* {timestamps ? (
-                <button
-                  onClick={() => {
-                    extractTimestamps(currNote.current);
-                  }}
-                  title="Check for any timestamps user has typed since note load"
-                >
-                  🔃
-                </button>
-              ) : (
-                <></>
-              )} */}
-            </div>
-
-            <div id="art-and-notes">
-              {/* left side */}
-              <div id="albumart">
-                <a href={albumURL}>
-                  <img
-                    alt="track cover art"
-                    src={imageURL}
-                    id="albumart-display"
-                  />{" "}
-                </a>
-              </div>
-              {/* right side */}
-              <div id="notes-display">
+            <section className="stage">
+              <div className="cover-stage fade d2">
                 <div
-                  id="notes"
-                  contentEditable="true"
-                  placeholder-text="Enter your notes here..."
-                  onInput={(e: any) => {
-                    handleNoteBoxKeypress(e.target.innerHTML);
-                  }}
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(currNote.current),
-                  }}
+                  className="cover-reflect"
+                  aria-hidden
+                  style={{ backgroundImage: `url("${imageURL}")` }}
                 />
+                <a href={albumURL} target="_blank" rel="noreferrer" className="cover">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="cover-img" src={imageURL} alt={`${songName} album art`} />
+                </a>
+                <div className="now-card">
+                  <div className="swatch" aria-hidden>
+                    <i /><i /><i /><i />
+                  </div>
+                  <div>
+                    <div className="meta-t">Now Playing · Spotify</div>
+                    <div className="meta-b">{songName}</div>
+                  </div>
+                </div>
               </div>
-            </div>
+
+              <div className="info fade d3">
+                <div className="eyebrow">
+                  {isPlaying ? "Currently streaming" : "Paused"} · {fmtTime(durationMs)}
+                </div>
+                <h1 className="song-title">
+                  <a href={trackURL} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>
+                    {songName.split(" ").length > 1
+                      ? (
+                        <>
+                          {songName.split(" ").slice(0, -1).join(" ")}{" "}
+                          <em>{songName.split(" ").slice(-1)[0]}</em>
+                        </>
+                      )
+                      : <em>{songName}</em>}
+                  </a>
+                </h1>
+                <div className="byline">
+                  by{" "}
+                  {artists.map((artist, index) => (
+                    <span key={index}>
+                      <b>
+                        <a href={artistURLs[index]} target="_blank" rel="noreferrer">
+                          {artist}
+                        </a>
+                      </b>
+                      {index < artists.length - 1 ? ", " : ""}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="player">
+                  <div className="ctrls">
+                    <button
+                      onClick={handlePrevButtonClick}
+                      disabled={awaitingLSkipAPIResponse}
+                      aria-label="Previous track"
+                    >
+                      <SkipBackwardIcon />
+                    </button>
+                    <button
+                      className="play"
+                      onClick={isPlaying ? handlePauseButtonClick : handlePlayButtonClick}
+                      disabled={awaitingPlayAPIResponse}
+                      aria-label={isPlaying ? "Pause" : "Play"}
+                    >
+                      {isPlaying ? <PauseIcon /> : <PlayIcon />}
+                    </button>
+                    <button
+                      onClick={handleNextButtonClick}
+                      disabled={awaitingRSkipAPIResponse}
+                      aria-label="Next track"
+                    >
+                      <SkipForwardIcon />
+                    </button>
+                  </div>
+                  <div className="time">
+                    <div className="row">
+                      <span>{fmtTime(progressMs)}</span>
+                      <span>— {fmtTime(remainingMs)}</span>
+                    </div>
+                    <div className="bar">
+                      <div className="fill" style={{ width: `${progressPct}%` }} />
+                    </div>
+                  </div>
+                </div>
+
+                {timestamps.length > 0 && (
+                  <div className="ts-chips">
+                    {timestamps.map((timestamp, index) => (
+                      <TimeStamp
+                        key={index}
+                        trackID={trackID}
+                        access_token={accessToken.current}
+                        device_id={undefined}
+                        stamp={timestamp}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="notes fade d4">
+              <span className="notes-label">Notes · autosaves</span>
+              <div
+                className="notes-editor"
+                contentEditable
+                spellCheck={false}
+                data-placeholder="Write something… drop a 1:23 timestamp and it turns into a button."
+                onInput={(e: any) => handleNoteBoxKeypress(e.target.innerHTML)}
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(currNote.current),
+                }}
+              />
+            </section>
           </>
         ) : (
-          <>~try playing a song on Spotify~</>
+          <section className="notes-hint fade d2">
+            {loadingNote ? (
+              <>Loading your notes…</>
+            ) : !acceptedEULA && userID.current ? (
+              <>Accept the EULA prompt to get started.</>
+            ) : (
+              <>
+                Start playing a song on Spotify.
+                <small>This page will follow along.</small>
+              </>
+            )}
+          </section>
         )}
-      </div>
-    </main>
+
+        <footer className="foot fade d5">
+          <span>Neon · NextAuth · Vercel</span>
+          <span>Set in Kalnia &amp; Geist</span>
+        </footer>
+      </main>
+    </>
   );
 }

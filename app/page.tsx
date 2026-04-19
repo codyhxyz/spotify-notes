@@ -7,60 +7,67 @@ import { spotifyLogin } from "../util/authutils";
 export default function Home() {
   const { status } = useSession();
   const router = useRouter();
+
   useEffect(() => {
     if (status === "authenticated") router.replace("/home");
   }, [status, router]);
-  return (
-    <main>
-      <div className="login-div">
-        <div>
-          <h1>Welcome to My Song Notes! </h1>
 
-          <button
-            id="login-button"
-            onClick={() => {
-              spotifyLogin();
-            }}
-          >
-            Log In With Spotify
-          </button>
-          <p className="text-message">
-            Quick Start: Use Spotify to play songs, and the app will follow
-            along!
-          </p>
-          <p className="text-message sent">
-            Please note that full navigation features are only possible on{" "}
-            <b>Spotify Premium</b> accounts.
-          </p>
-          <p className="text-message">
-            How we use permissions:
-            <ul>
-              <li style={{ color: "black" }}>
-                user-read-playback-state allows us to see the current song
-                you&lsquo;re playing so we can display its information and so we
-                can associate your notes with that song.{" "}
-              </li>
-              <li style={{ color: "black" }}>
-                user-modify-playback-state allows you to skip, play, pause songs
-                from our app.
-              </li>
-              <li style={{ color: "black" }}>
-                user-read-email allows us to associate your email with your
-                spotify account for logging into our website.
-              </li>
-            </ul>
-          </p>
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      document.body.style.setProperty("--mx", `${(e.clientX / window.innerWidth) * 100}%`);
+      document.body.style.setProperty("--my", `${(e.clientY / window.innerHeight) * 100}%`);
+    };
+    document.addEventListener("pointermove", onMove);
+    return () => document.removeEventListener("pointermove", onMove);
+  }, []);
+
+  return (
+    <main className="login-shell">
+      <section className="login-hero fade">
+        <div className="kicker">— A private journal for the songs you&apos;re listening to</div>
+        <h1>
+          My Song <em>Notes.</em>
+        </h1>
+        <p className="lede">
+          Log in with Spotify, play anything, and write alongside. Timestamps become clickable &mdash; everything auto&#8209;saves.
+        </p>
+        <button className="login-button" onClick={() => spotifyLogin()}>
+          <span className="spotify-mark">♪</span>
+          Continue with Spotify
+        </button>
+      </section>
+
+      <aside className="login-panel fade d2">
+        <h2>Permissions · What we read</h2>
+        <div className="perms">
+          <div className="row">
+            <code>read‑playback</code>
+            <p>So we can follow along with whatever&apos;s playing and pair notes to the right track.</p>
+          </div>
+          <div className="row">
+            <code>modify‑playback</code>
+            <p>So the play / pause / skip controls and clickable timestamps actually move Spotify.</p>
+          </div>
+          <div className="row">
+            <code>read‑email</code>
+            <p>Used as your account identifier. Nothing is sent anywhere else.</p>
+          </div>
         </div>
-        <p>
-          {" "}
-          <a href="https://raw.githubusercontent.com/codyhxyz/spotify-notes/master/PRIVACY_POLICY.md?token=GHSAT0AAAAAACHJPPBZTMECVE5WYO6FA4JUZH2MHZQ">
-            {" "}
-            Privacy Policy
+        <p className="note">
+          Full playback controls require <b>Spotify Premium</b>. Notes still save for free accounts.{" "}
+          <a
+            href="https://raw.githubusercontent.com/codyhxyz/spotify-notes/master/PRIVACY_POLICY.md"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Privacy policy
           </a>
         </p>
-        <div>
-          <img id="login-artwork" src="/icon.ico" alt="" />
-        </div>
+      </aside>
+
+      <div className="login-footer fade d3">
+        <span>Neon · NextAuth · Vercel</span>
+        <span>Set in Kalnia &amp; Geist</span>
       </div>
     </main>
   );
