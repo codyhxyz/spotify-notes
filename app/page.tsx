@@ -1,11 +1,15 @@
 "use client";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { spotifyLogin } from "../util/authutils";
 
-// supabase auth tied to spotify provider auth
 export default function Home() {
-  const supabase = createClientComponentClient();
-
+  const { status } = useSession();
+  const router = useRouter();
+  useEffect(() => {
+    if (status === "authenticated") router.replace("/home");
+  }, [status, router]);
   return (
     <main>
       <div className="login-div">
@@ -15,7 +19,7 @@ export default function Home() {
           <button
             id="login-button"
             onClick={() => {
-              spotifyLogin(supabase);
+              spotifyLogin();
             }}
           >
             Log In With Spotify
@@ -49,7 +53,7 @@ export default function Home() {
         </div>
         <p>
           {" "}
-          <a href="https://raw.githubusercontent.com/ydoc5212/spotify-notes/master/PRIVACY_POLICY.md?token=GHSAT0AAAAAACHJPPBZTMECVE5WYO6FA4JUZH2MHZQ">
+          <a href="https://raw.githubusercontent.com/codyhxyz/spotify-notes/master/PRIVACY_POLICY.md?token=GHSAT0AAAAAACHJPPBZTMECVE5WYO6FA4JUZH2MHZQ">
             {" "}
             Privacy Policy
           </a>

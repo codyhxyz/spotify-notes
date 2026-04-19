@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useSession } from "next-auth/react";
 import {
   gettrack,
   playtrack,
@@ -12,7 +13,6 @@ import {
   extractTrackIDFromSongURL,
 } from "../../util/apiutils";
 import { spotifyLogout } from "../../util/authutils";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import {
   SkipBackwardIcon,
   SkipForwardIcon,
@@ -26,7 +26,7 @@ import DOMPurify from "dompurify";
 import { AxiosResponse } from "axios";
 
 export default function Home() {
-  const supabase = createClientComponentClient();
+  const { data: session, status } = useSession();
   const [acceptedEULA, setAcceptedEULA] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>(""); //change only on search by URL, not search by ID
   const [songName, setSongName] = useState<string>("");
@@ -56,50 +56,39 @@ export default function Home() {
   const rSkipButtonColor = awaitingRSkipAPIResponse ? "grey" : "white";
   const [timestamps, setTimeStamps] = useState<Array<string>>([]);
 
-  //get & store supabase and spotify session data
+  // Pull the Spotify access token + canonical user id from the NextAuth
+  // session. The session callback in lib/auth.ts exposes both. If the session
+  // is loading or unauthenticated, bail until it's ready (middleware will
+  // redirect unauthenticated requests, so the unauthenticated branch is
+  // mostly a safety net).
   useEffect(() => {
-    // async function so we can use await
-    async function getSession() {
-      // get current supabase session
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.provider_token;
-      // if no provider token was found, we need to reauthenticate the user
-      if (!token) {
-        console.log("no provider token found, reauthenticating user...");
-        reauthenticateUser();
-        return;
-      }
-      accessToken.current = token; //store spotify access token
-      userID.current = data?.session?.user?.id; //store supabase user ID
-      console.log("saving the following token: ", accessToken.current);
-      confirmEULA();
-    }
-    getSession();
-  }, [supabase.auth]);
+    if (status !== "authenticated") return;
+    accessToken.current = session?.accessToken;
+    userID.current = session?.user?.id;
+    if (userID.current) confirmEULA();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, session?.accessToken, session?.user?.id]);
 
   async function confirmEULA() {
-    let accepted = false;
     try {
       // check for prior EULA acceptance
-      let { data, error, status } = await supabase
-        .from("users")
-        .select("accepted_eula")
-        .eq("user_id", userID.current);
-      if (data && data[0]?.accepted_eula) {
+      const res = await fetch("/api/users");
+      const json = await res.json();
+      if (json?.accepted_eula) {
         setAcceptedEULA(true);
       } else {
         // prompt w EULA
         if (
           confirm(
-            "Spotify requires us to ask you to agree to our EULA. By clicking OK, you acknowledge that you have read and agree to be bound by the terms and conditions of this EULA. You can read it here: https://raw.githubusercontent.com/ydoc5212/spotify-notes/master/EULA.md"
+            "Spotify requires us to ask you to agree to our EULA. By clicking OK, you acknowledge that you have read and agree to be bound by the terms and conditions of this EULA. You can read it here: https://raw.githubusercontent.com/codyhxyz/spotify-notes/master/EULA.md"
           )
         ) {
           try {
-            // only ask for EULA confirmation once
-            const { data, error } = await supabase
-              .from("users")
-              .upsert({ user_id: userID.current, accepted_eula: true })
-              .select();
+            await fetch("/api/users", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ accepted_eula: true }),
+            });
             setAcceptedEULA(true);
           } catch (error) {
             console.log(error);
@@ -108,7 +97,7 @@ export default function Home() {
           alert(
             "In compliance with Spotify's policies, our app's functionality will be unavailable until the EULA is accepted."
           );
-          spotifyLogout(supabase);
+          spotifyLogout();
         }
       }
     } catch (error) {
@@ -117,8 +106,8 @@ export default function Home() {
     }
   }
 
-  const debouncedSave = useDebouncedCallback((uid, tid, note) => {
-    saveNote({ user_id: uid, track_id: tid, note: note });
+  const debouncedSave = useDebouncedCallback((tid, note) => {
+    saveNote({ track_id: tid, note });
   }, 500);
 
   // reset userIsTyping state when user hasnt pressed a key for 0.5s
@@ -232,24 +221,17 @@ export default function Home() {
 
   // get note from DB upon successful track search
   async function fetchNote(tid: any) {
-    // code to load note into currNote
-    // note: should i have this code in a useCallback func as the example has it?
-    //   but then how would i make SURE it happens AFTER the user loads a new song,
-    //   and BEFORE they start typing in a new note?
     let note = "";
     try {
       setLoadingNote(true);
-      let { data, error, status } = await supabase
-        .from("notes")
-        .select("track_id, note")
-        .eq("user_id", userID.current) //only load my own notes
-        .eq("track_id", tid) //only load the right song's notes
-        .single(); //turns from array to single object
+      const res = await fetch(
+        `/api/notes?track_id=${encodeURIComponent(tid)}`
+      );
+      const json = await res.json();
       console.log("using this trackID in our database pull", tid);
-      // import user's data onto screen
-      if (data) {
-        console.log("successfully got note from database, it is: ", data.note);
-        note = data.note; //got note, func returns this value
+      if (json?.note) {
+        console.log("successfully got note from database, it is: ", json.note);
+        note = json.note;
       }
     } catch (error) {
       console.log("hi there, we got an error. Heres the error below : ");
@@ -423,22 +405,20 @@ export default function Home() {
   }
 
   async function saveNote({
-    user_id: uid,
-    track_id: track_id,
-    note: note,
-  }: any): Promise<void> {
+    track_id,
+    note,
+  }: {
+    track_id: string | undefined;
+    note: string;
+  }): Promise<void> {
     try {
       console.log("called save func :)");
-      let { error } = await supabase.from("notes").upsert(
-        {
-          user_id: uid,
-          track_id: track_id,
-          note: note,
-        },
-        { ignoreDuplicates: false }
-      ); //allow notes to be updated
-      if (error) throw error;
-      // alert('Note saved!')
+      const res = await fetch("/api/notes", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ track_id, note }),
+      });
+      if (!res.ok) throw new Error(`save failed: ${res.status}`);
       // TODO make a less intrusive way to display that note has been saved successfully
       // eg, flash the note border Forest Green for a few seconds after last save.
     } catch (error) {
@@ -454,19 +434,17 @@ export default function Home() {
     currNote.current = note;
     userIsTyping.current = true;
     setTypingFalseDebounced(); //reset the userIsTyping state a little while after last keypress
-    debouncedSave(userID.current, trackID, note); //save note
+    debouncedSave(trackID, note); //save note
   }
 
-  // delete all data from this user off of supabase
-  async function deleteUserData(uid: string | undefined) {
-    let { error } = await supabase.from("notes").delete().eq("user_id", uid);
-    if (error) {
+  // delete all notes for this user from the DB
+  async function deleteUserData() {
+    const res = await fetch("/api/notes", { method: "DELETE" });
+    if (!res.ok) {
       alert(
         "There was an error while deleting your data. Please refresh the page and try again."
       );
-      console.log("about to log error");
-      console.log(error);
-      throw error;
+      throw new Error(`delete failed: ${res.status}`);
     }
   }
 
@@ -488,7 +466,7 @@ export default function Home() {
             <button
               id="logout-button"
               onClick={() => {
-                spotifyLogout(supabase);
+                spotifyLogout();
                 window.location.href = "/";
               }}
             >
@@ -505,11 +483,11 @@ export default function Home() {
                       "Are you like super duper sure and not pressing this on accident?"
                     )
                   ) {
-                    deleteUserData(userID.current);
+                    deleteUserData();
                     alert("Successfully removed all user data.");
                   }
                 }
-                spotifyLogout(supabase);
+                spotifyLogout();
                 window.location.href = "/";
               }}
             >
