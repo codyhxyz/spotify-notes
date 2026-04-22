@@ -60,6 +60,7 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.SPOTIFY_CLIENT_ID!,
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
       authorization: {
+        url: "https://accounts.spotify.com/authorize",
         params: { scope: SPOTIFY_SCOPES },
       },
     }),
