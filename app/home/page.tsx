@@ -535,7 +535,7 @@ export default function Home() {
             </section>
 
             <section className="notes fade d4">
-              <span className="notes-label">Notes · autosaves</span>
+              <span className="notes-label">Notes</span>
               <div
                 className="notes-editor"
                 contentEditable
@@ -564,8 +564,8 @@ export default function Home() {
         )}
 
         <footer className="foot fade d5">
-          <span>Neon · NextAuth · Vercel</span>
-          <span>Set in Kalnia &amp; Geist</span>
+          <a href="https://github.com/codyhxyz/spotify-notes" target="_blank" rel="noreferrer">source on github</a>
+          <a href="https://codyh.xyz" target="_blank" rel="noreferrer">built by codyh</a>
         </footer>
       </main>
     </>
