@@ -14,7 +14,12 @@ import { db, schema } from "@/lib/db";
 //                                     (we hit /me implicitly via Spotify
 //                                     OAuth profile to obtain the canonical
 //                                     Spotify user id used as our DB user_id)
-const SPOTIFY_SCOPES = ["user-read-email"].join(" ");
+const SPOTIFY_SCOPES = [
+  "user-read-email",
+  "user-read-private",
+  "user-read-playback-state",
+  "user-modify-playback-state",
+].join(" ");
 
 // Refresh an expired Spotify access token using the refresh token.
 async function refreshSpotifyAccessToken(refreshToken: string) {
