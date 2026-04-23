@@ -592,11 +592,13 @@ export default function Home() {
           </section>
         )}
 
-        <footer className="foot fade d5">
-          <a href="https://github.com/codyhxyz/spotify-notes" target="_blank" rel="noreferrer">source code</a>
-          <button onClick={() => setAboutOpen(true)} className="footer-btn">what is this</button>
-          <a href="https://codyh.xyz" target="_blank" rel="noreferrer">built by codyh</a>
-        </footer>
+        {hasTrack && (
+          <footer className="foot fade d5">
+            <a href="https://github.com/codyhxyz/spotify-notes" target="_blank" rel="noreferrer">source code</a>
+            <button onClick={() => setAboutOpen(true)} className="footer-btn">what is this</button>
+            <a href="https://codyh.xyz" target="_blank" rel="noreferrer">built by codyh</a>
+          </footer>
+        )}
 
         {aboutOpen && (
           <div className="modal-overlay" onClick={() => setAboutOpen(false)}>
