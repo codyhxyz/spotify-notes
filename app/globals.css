@@ -27,10 +27,101 @@
   --glass-lo: rgba(255, 240, 220, 0.03);
   --line: rgba(255, 240, 220, 0.14);
 
+  --accent-hi: var(--accent-hi);
+  --accent-ink: var(--accent-ink);
+  --accent-shadow: var(--accent-shadow);
+  --cover-shadow: var(--cover-shadow);
+
   --danger: #ff6a4d;
 
   --radius: 22px;
   --radius-lg: 28px;
+}
+
+/* =============================================================
+   Theme palettes. Swap via `<html data-theme="...">`.
+   Each theme redefines the 5-stop gradient + accent glue.
+   Album-art bath still wins at runtime via inline --album-image.
+   ============================================================= */
+
+:root[data-theme="lagoon"] {
+  --c1: #8fd9ff;
+  --c2: #3aa0c8;
+  --c3: #2d4f8f;
+  --c4: #121a44;
+  --c5: #05060f;
+  --ink: #e6f0ff;
+  --ink-dim: rgba(230, 240, 255, 0.62);
+  --ink-mute: rgba(230, 240, 255, 0.34);
+  --ink-whisper: rgba(230, 240, 255, 0.14);
+  --glass: rgba(200, 225, 255, 0.06);
+  --glass-hi: rgba(200, 225, 255, 0.14);
+  --glass-lo: rgba(200, 225, 255, 0.03);
+  --line: rgba(200, 225, 255, 0.14);
+  --accent-hi: #cfefff;
+  --accent-ink: #031226;
+  --accent-shadow: rgba(58, 160, 200, 0.55);
+  --cover-shadow: rgba(40, 100, 180, 0.55);
+}
+
+:root[data-theme="moss"] {
+  --c1: #d4e27a;
+  --c2: #7ea85a;
+  --c3: #34583a;
+  --c4: #1a2a22;
+  --c5: #090d0c;
+  --ink: #eef0e0;
+  --ink-dim: rgba(238, 240, 224, 0.62);
+  --ink-mute: rgba(238, 240, 224, 0.34);
+  --ink-whisper: rgba(238, 240, 224, 0.14);
+  --glass: rgba(220, 240, 200, 0.06);
+  --glass-hi: rgba(220, 240, 200, 0.14);
+  --glass-lo: rgba(220, 240, 200, 0.03);
+  --line: rgba(220, 240, 200, 0.14);
+  --accent-hi: #e6f3a8;
+  --accent-ink: #0b1a0e;
+  --accent-shadow: rgba(126, 168, 90, 0.55);
+  --cover-shadow: rgba(70, 110, 60, 0.55);
+}
+
+:root[data-theme="noir"] {
+  --c1: #f5ead2;
+  --c2: #ff7a5c;
+  --c3: #b32030;
+  --c4: #3b0a10;
+  --c5: #060305;
+  --ink: #f8efe4;
+  --ink-dim: rgba(248, 239, 228, 0.62);
+  --ink-mute: rgba(248, 239, 228, 0.34);
+  --ink-whisper: rgba(248, 239, 228, 0.14);
+  --glass: rgba(255, 240, 230, 0.06);
+  --glass-hi: rgba(255, 240, 230, 0.14);
+  --glass-lo: rgba(255, 240, 230, 0.03);
+  --line: rgba(255, 240, 230, 0.14);
+  --accent-hi: #ffc9a8;
+  --accent-ink: #140306;
+  --accent-shadow: rgba(255, 122, 92, 0.55);
+  --cover-shadow: rgba(179, 32, 48, 0.55);
+}
+
+:root[data-theme="vapor"] {
+  --c1: #ffc9b4;
+  --c2: #ff5fb0;
+  --c3: #7a3fd6;
+  --c4: #2a0d55;
+  --c5: #07021a;
+  --ink: #f0e6ff;
+  --ink-dim: rgba(240, 230, 255, 0.62);
+  --ink-mute: rgba(240, 230, 255, 0.34);
+  --ink-whisper: rgba(240, 230, 255, 0.14);
+  --glass: rgba(240, 220, 255, 0.06);
+  --glass-hi: rgba(240, 220, 255, 0.14);
+  --glass-lo: rgba(240, 220, 255, 0.03);
+  --line: rgba(240, 220, 255, 0.14);
+  --accent-hi: #ffd1f2;
+  --accent-ink: #120528;
+  --accent-shadow: rgba(255, 95, 176, 0.55);
+  --cover-shadow: rgba(122, 63, 214, 0.55);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -166,11 +257,24 @@ input, textarea {
 .brand .orb {
   width: 14px;
   height: 14px;
+  padding: 0;
+  border: none;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, var(--c1), var(--c2) 60%, var(--c3));
-  box-shadow: 0 0 24px rgba(255, 180, 100, 0.6);
+  box-shadow: 0 0 24px var(--accent-shadow);
   animation: orb-pulse 3s ease-in-out infinite;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.brand .orb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 30px var(--accent-shadow), 0 0 0 4px var(--glass-hi);
+}
+.brand .orb:active { transform: scale(0.95); }
+.brand .orb:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ink), 0 0 24px var(--accent-shadow);
 }
 @keyframes orb-pulse {
   50% { transform: scale(1.12); filter: brightness(1.2); }
@@ -250,7 +354,7 @@ input, textarea {
   background-size: cover;
   background-position: center;
   box-shadow:
-    0 40px 120px rgba(180, 60, 40, 0.55),
+    0 40px 120px var(--cover-shadow),
     0 0 0 1px rgba(255, 255, 255, 0.08),
     inset 0 0 120px rgba(20, 6, 18, 0.35);
   position: relative;
@@ -378,7 +482,7 @@ input, textarea {
 .song-title em {
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(90deg, var(--c1), #ffdca0 50%, var(--c2));
+  background: linear-gradient(90deg, var(--c1), var(--accent-hi) 50%, var(--c2));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -447,8 +551,8 @@ input, textarea {
   height: 58px;
   background: linear-gradient(135deg, var(--c1), var(--c2));
   border: none;
-  color: #1a0810;
-  box-shadow: 0 10px 30px rgba(212, 87, 42, 0.55);
+  color: var(--accent-ink);
+  box-shadow: 0 10px 30px var(--accent-shadow);
 }
 .ctrls .play:hover:not(:disabled) { filter: brightness(1.1); }
 
@@ -479,7 +583,7 @@ input, textarea {
   left: 0;
   top: 0;
   bottom: 0;
-  background: linear-gradient(90deg, var(--c1), #ffdca0, var(--c2));
+  background: linear-gradient(90deg, var(--c1), var(--accent-hi), var(--c2));
   box-shadow: 0 0 14px rgba(255, 200, 140, 0.7);
   transition: width 0.8s ease;
 }
@@ -553,7 +657,7 @@ input, textarea {
   color: var(--ink-mute);
   font-style: italic;
 }
-.notes-editor em { color: #ffdca0; font-style: italic; }
+.notes-editor em { color: var(--accent-hi); font-style: italic; }
 .notes-editor b, .notes-editor strong { color: var(--ink); font-weight: 500; }
 
 .notes-hint {
@@ -630,7 +734,7 @@ input, textarea {
 .login-hero h1 em {
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(90deg, var(--c1), #ffdca0 50%, var(--c2));
+  background: linear-gradient(90deg, var(--c1), var(--accent-hi) 50%, var(--c2));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -657,21 +761,21 @@ input, textarea {
   text-transform: uppercase;
   font-weight: 500;
   background: linear-gradient(135deg, var(--c1), var(--c2));
-  color: #1a0810;
+  color: var(--accent-ink);
   border: none;
-  box-shadow: 0 20px 60px rgba(212, 87, 42, 0.55);
+  box-shadow: 0 20px 60px var(--accent-shadow);
   transition: transform 0.2s, filter 0.2s, box-shadow 0.2s;
 }
 .login-button:hover {
   transform: translateY(-2px);
   filter: brightness(1.08);
-  box-shadow: 0 28px 70px rgba(212, 87, 42, 0.6);
+  box-shadow: 0 28px 70px var(--accent-shadow);
 }
 .login-button .spotify-mark {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #1a0810;
+  background: var(--accent-ink);
   color: var(--c1);
   display: grid;
   place-items: center;

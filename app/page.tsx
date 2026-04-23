@@ -66,7 +66,7 @@ export default function Home() {
       </aside>
 
       <div className="login-footer fade d3">
-        <a href="https://github.com/codyhxyz/spotify-notes" target="_blank" rel="noreferrer">source on github</a>
+        <a href="https://github.com/codyhxyz/spotify-notes" target="_blank" rel="noreferrer">source code</a>
         <a href="https://codyh.xyz" target="_blank" rel="noreferrer">built by codyh</a>
       </div>
     </main>

@@ -24,6 +24,14 @@ import { timestampRegexGlobal } from "@/util/miscutils";
 import { useDebouncedCallback } from "use-debounce";
 import DOMPurify from "dompurify";
 import { AxiosResponse } from "axios";
+import {
+  Theme,
+  THEME_LABELS,
+  applyTheme,
+  loadTheme,
+  nextTheme,
+  saveTheme,
+} from "../../util/theme";
 
 function fmtTime(ms: number | undefined) {
   if (!ms || ms < 0) return "0:00";
@@ -62,6 +70,20 @@ export default function Home() {
     useState<boolean>(false);
 
   const [timestamps, setTimeStamps] = useState<Array<string>>([]);
+  const [theme, setTheme] = useState<Theme>("rose");
+
+  useEffect(() => {
+    const t = loadTheme();
+    setTheme(t);
+    applyTheme(t);
+  }, []);
+
+  function cycleTheme() {
+    const t = nextTheme(theme);
+    setTheme(t);
+    applyTheme(t);
+    saveTheme(t);
+  }
 
   // NextAuth session -> access token + canonical Spotify user id.
   useEffect(() => {
@@ -387,7 +409,13 @@ export default function Home() {
       <main className="app-shell">
         <header className="topbar fade">
           <div className="brand">
-            <span className="orb" aria-hidden />
+            <button
+              type="button"
+              className="orb"
+              onClick={cycleTheme}
+              title={`Theme: ${THEME_LABELS[theme]} · click to change`}
+              aria-label={`Change theme (current: ${THEME_LABELS[theme]})`}
+            />
             My&nbsp;<b><em>Song</em>&nbsp;Notes</b>
           </div>
           <div className="top-right">
@@ -564,7 +592,7 @@ export default function Home() {
         )}
 
         <footer className="foot fade d5">
-          <a href="https://github.com/codyhxyz/spotify-notes" target="_blank" rel="noreferrer">source on github</a>
+          <a href="https://github.com/codyhxyz/spotify-notes" target="_blank" rel="noreferrer">source code</a>
           <a href="https://codyh.xyz" target="_blank" rel="noreferrer">built by codyh</a>
         </footer>
       </main>
