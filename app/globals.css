@@ -472,12 +472,13 @@ input, textarea {
 .song-title {
   font-family: var(--font-display), serif;
   font-weight: 200;
-  font-size: clamp(54px, 7.5vw, 112px);
-  line-height: 0.9;
+  font-size: clamp(32px, 6vw, 96px);
+  line-height: 1.0;
   letter-spacing: -0.035em;
   margin: 14px 0 8px;
   text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25);
   overflow-wrap: break-word;
+  word-break: break-word;
 }
 .song-title em {
   font-style: italic;
@@ -697,6 +698,16 @@ input, textarea {
 }
 .foot a { border-bottom: 1px solid var(--line); color: var(--ink-dim); }
 .foot a:hover { color: var(--ink); }
+.footer-btn { background: none; border: none; border-bottom: 1px solid var(--line); color: var(--ink-dim); cursor: pointer; font-family: var(--font-mono), monospace; font-size: 10.5px; letter-spacing: 0.22em; text-transform: uppercase; padding: 0; }
+.footer-btn:hover { color: var(--ink); }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 24px; }
+.modal-box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; max-width: 520px; width: 100%; padding: 36px; position: relative; max-height: 80vh; overflow-y: auto; }
+.modal-box h2 { font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); margin: 0 0 24px; }
+.modal-box p { font-size: 14px; line-height: 1.7; color: var(--ink); margin: 0 0 16px; }
+.modal-box p:last-child { margin-bottom: 0; }
+.modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--ink-dim); cursor: pointer; font-size: 14px; padding: 4px 8px; }
+.modal-close:hover { color: var(--ink); }
 
 /* =============================================================
    Login screen
