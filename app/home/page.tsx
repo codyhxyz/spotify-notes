@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   gettrack,
   playtrack,
@@ -20,6 +21,7 @@ import {
   PauseIcon,
   TimeStamp,
 } from "../../util/components";
+import SettingsModal from "../components/SettingsModal";
 import { timestampRegexGlobal } from "@/util/miscutils";
 import { useDebouncedCallback } from "use-debounce";
 import DOMPurify from "dompurify";
@@ -43,8 +45,10 @@ function fmtTime(ms: number | undefined) {
 
 export default function Home() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [acceptedEULA, setAcceptedEULA] = useState<boolean>(false);
   const [aboutOpen, setAboutOpen] = useState<boolean>(false);
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
   const [searchText] = useState<string>(""); // reserved for future URL-search feature
   const [songName, setSongName] = useState<string>("");
   const [artists, setArtists] = useState<string[]>([]);
@@ -386,16 +390,6 @@ export default function Home() {
     debouncedSave(trackID, note);
   }
 
-  async function deleteUserData() {
-    const res = await fetch("/api/notes", { method: "DELETE" });
-    if (!res.ok) {
-      alert(
-        "There was an error while deleting your data. Please refresh the page and try again."
-      );
-      throw new Error(`delete failed: ${res.status}`);
-    }
-  }
-
   const hasTrack = Boolean(
     userID.current && songName && artists && imageURL && acceptedEULA
   );
@@ -427,32 +421,17 @@ export default function Home() {
             )}
             <button
               className="chip"
-              onClick={() => {
-                spotifyLogout();
-                window.location.href = "/";
-              }}
+              onClick={() => router.push("/home/library")}
+              title="All your notes"
             >
-              Log out
+              Library
             </button>
             <button
-              className="chip danger"
-              onClick={async () => {
-                if (
-                  confirm("Delete every note you've ever saved? This can't be undone.") &&
-                  confirm("Really sure? Last chance.")
-                ) {
-                  try {
-                    await deleteUserData();
-                    alert("Removed all notes.");
-                  } catch {
-                    return;
-                  }
-                  spotifyLogout();
-                  window.location.href = "/";
-                }
-              }}
+              className="chip"
+              onClick={() => setSettingsOpen(true)}
+              title="Settings"
             >
-              Erase all
+              Settings
             </button>
           </div>
         </header>
@@ -626,6 +605,12 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        <SettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          accessToken={accessToken.current}
+        />
       </main>
     </>
   );

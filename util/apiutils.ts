@@ -140,6 +140,29 @@ export function extractTrackDataFromResponse(track: any) {
   return [song_name, image_url, track_url, album_url, artist_urls, artists];
 }
 
+// batch fetch multiple tracks. spotify max is 50 ids per call.
+export async function getTracksBatch(
+  trackIDs: string[],
+  access_token: string | undefined
+) {
+  if (!access_token || trackIDs.length === 0) return [];
+  const chunks: string[][] = [];
+  for (let i = 0; i < trackIDs.length; i += 50) {
+    chunks.push(trackIDs.slice(i, i + 50));
+  }
+  const headers_obj = {
+    headers: { Authorization: `Bearer ${access_token}` },
+  };
+  const results: any[] = [];
+  for (const chunk of chunks) {
+    const url = `https://api.spotify.com/v1/tracks?ids=${chunk.join(",")}`;
+    const resp = await axios.get(url, headers_obj);
+    const tracks = resp?.data?.tracks ?? [];
+    for (const t of tracks) if (t) results.push(t);
+  }
+  return results;
+}
+
 export function extractTrackIDFromSongURL(turl: string) {
   const reg = turl.match(/spotify.com\/track\/([a-zA-Z0-9]+)\?.*$/);
   if (reg?.[1]) {
