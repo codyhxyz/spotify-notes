@@ -1,39 +1,95 @@
-## Note to self
+# My Song Notes
 
-Mysongnotes.vercel.app lets u drag in files or somehow tracks what ur playing to take notes on beyond just spotify.
+A rich-text journal that follows whatever you're playing on Spotify. Live at [mysongnotes.vercel.app](https://mysongnotes.vercel.app). The Library view at `/home/library` turns every note you've ever written into a searchable gallery of album-art cards.
 
+## What it does
 
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+- Sign in with Spotify and the app mirrors your current playback — track title, artists, album art, transport controls.
+- Write notes in a rich-text pane; changes auto-save to Postgres with a debounce, keyed by Spotify `trackId`.
+- Type a timestamp like `1:23` and it becomes a clickable chip that seeks Spotify to that position.
+- Browse every note you've written in the Library: full-text search across notes, songs, and artists; sort pills; a side drawer with play-in-Spotify and delete.
+- Export your notes as JSON, wipe everything, or log out from a shared settings modal.
 
-## Getting Started
+## Why
 
-First, run the development server:
+DJing means holding structured opinions about an absurd amount of music. Spotify gives you the catalog but no way to write anything down inside it, so the usual workflow is to alt-tab between a player and a notes app until the thread is lost. My Song Notes collapses that loop — instead of navigating to a song to annotate it, the note pane follows whatever is already playing. Opening the app is the same gesture as "I want to write about this."
+
+## Tech stack
+
+- Next.js 13.4 (App Router) on Vercel
+- NextAuth with the Spotify provider (JWT sessions, refresh-token rotation)
+- Drizzle ORM over Neon Postgres (`postgres-js` driver)
+- Tailwind for layout, custom CSS for theming
+- DOMPurify to sanitize note HTML, `use-debounce` for autosave, `axios` for Spotify API calls
+
+## Local setup
+
+You will need a Spotify developer app and a Postgres database (Neon is what production uses).
+
+```bash
+git clone https://github.com/codyhxyz/spotify-notes.git
+cd spotify-notes
+npm install
+cp .env.example .env.local
+```
+
+Fill in `.env.local`:
+
+- `DATABASE_URL` — Postgres connection string (Neon pooled URL works).
+- `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` — from the Spotify developer dashboard. Add `http://localhost:3000/api/auth/callback/spotify` as a redirect URI on the app.
+- `NEXTAUTH_SECRET` — generate with `openssl rand -base64 32`.
+- `NEXTAUTH_URL` — `http://localhost:3000` for local dev.
+
+Apply the schema. There is no `drizzle-kit migrate` script wired up; the canonical migration is a plain SQL file:
+
+```bash
+psql "$DATABASE_URL" -f migrations/001_initial.sql
+```
+
+(Or paste the contents of `migrations/001_initial.sql` into the Neon SQL editor.)
+
+Then:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) and sign in with Spotify.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project layout
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```
+app/
+  page.tsx              # landing / sign-in
+  home/page.tsx         # now-playing + note editor
+  home/library/page.tsx # searchable gallery of all your notes
+  components/           # SettingsModal, shared UI
+  api/
+    auth/[...nextauth]/ # NextAuth Spotify provider
+    notes/route.ts      # GET / PUT / DELETE single notes
+    notes/list/route.ts # GET all notes for the user
+    users/route.ts      # EULA-accept row
+lib/
+  auth.ts               # NextAuth options + Spotify token refresh
+  db.ts                 # Drizzle client (postgres-js)
+  db/schema.ts          # users, notes tables
+util/
+  apiutils.ts           # Spotify Web API wrappers
+  theme.ts              # theme switcher
+migrations/
+  001_initial.sql       # users + notes schema
+middleware.ts           # gates /home/* on a NextAuth session
+```
 
-## Learn More
+## Deployment
 
-To learn more about Next.js, take a look at the following resources:
+Deployed to Vercel. Pushes to `master` auto-deploy to production.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License and legal
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+- [EULA.md](./EULA.md)
+- [PRIVACY_POLICY.md](./PRIVACY_POLICY.md)
 
-## Deploy on Vercel
+## Credits
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Built by [codyh.xyz](https://codyh.xyz).
