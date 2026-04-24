@@ -492,21 +492,20 @@ input, textarea {
 .song-title {
   font-family: var(--font-display), serif;
   font-weight: 200;
-  font-size: clamp(32px, 6vw, 96px);
-  line-height: 1.0;
+  font-size: clamp(32px, 5vw, 80px);
+  line-height: 1.05;
   letter-spacing: -0.035em;
   margin: 14px 0 8px;
-  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.35);
   overflow-wrap: break-word;
   word-break: break-word;
+  padding-bottom: 0.08em;
 }
 .song-title em {
   font-style: italic;
   font-weight: 500;
-  background: linear-gradient(90deg, var(--c1), var(--accent-hi) 50%, var(--c2));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--accent-hi);
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.45);
 }
 
 .byline {
@@ -757,10 +756,13 @@ input, textarea {
 .login-hero h1 {
   font-family: var(--font-display), serif;
   font-weight: 200;
-  font-size: clamp(58px, 8vw, 124px);
-  line-height: 0.9;
+  font-size: clamp(44px, 6.5vw, 96px);
+  line-height: 1.05;
   letter-spacing: -0.035em;
   margin-bottom: 22px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  padding-bottom: 0.08em;
 }
 .login-hero h1 em {
   font-style: italic;
