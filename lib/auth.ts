@@ -60,7 +60,12 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.SPOTIFY_CLIENT_ID!,
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
       authorization: {
-        url: "https://accounts.spotify.com/authorize",
+        // Locale-prefixed URL (`/en/authorize`) bypasses the Spotify iOS app's
+        // universal-link interception of `/authorize`. Without this, mobile
+        // Safari hands the OAuth flow to the installed Spotify app, which
+        // returns `invalid_scope` for our playback scope set. Desktop is
+        // unaffected. Same endpoint server-side.
+        url: "https://accounts.spotify.com/en/authorize",
         params: { scope: SPOTIFY_SCOPES },
       },
     }),
@@ -137,5 +142,5 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/",
   },
-  debug: true,
+  debug: process.env.NODE_ENV !== "production",
 };
