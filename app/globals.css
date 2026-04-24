@@ -725,6 +725,9 @@ input, textarea {
 .modal-box h2 { font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); margin: 0 0 24px; }
 .modal-box p { font-size: 14px; line-height: 1.7; color: var(--ink); margin: 0 0 16px; }
 .modal-box p:last-child { margin-bottom: 0; }
+.modal-box .modal-byline { font-family: var(--font-mono), monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 20px; }
+.modal-box .modal-byline a { color: var(--ink); border-bottom: 1px solid var(--line); }
+.modal-box .modal-byline a:hover { color: var(--accent-hi); border-bottom-color: var(--accent-hi); }
 .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--ink-dim); cursor: pointer; font-size: 14px; padding: 4px 8px; }
 .modal-close:hover { color: var(--ink); }
 

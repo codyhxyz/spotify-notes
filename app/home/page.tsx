@@ -605,6 +605,12 @@ export default function Home() {
             <div className="modal-box" onClick={(e) => e.stopPropagation()}>
               <button className="modal-close" onClick={() => setAboutOpen(false)}>✕</button>
               <h2>what is this?</h2>
+              <p className="modal-byline">
+                Built by{" "}
+                <a href="https://codyh.xyz" target="_blank" rel="noreferrer">
+                  Cody Hergenroeder
+                </a>
+              </p>
               <p>
                 I built this because I&apos;m a DJ, and DJing requires you to constantly organize your thoughts around huge amounts of music. I was switching between Spotify and a notes app. I needed a frictionless way to take notes on Spotify songs without losing flow.
               </p>
