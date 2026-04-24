@@ -162,13 +162,3 @@ export async function getTracksBatch(
   }
   return results;
 }
-
-export function extractTrackIDFromSongURL(turl: string) {
-  const reg = turl.match(/spotify.com\/track\/([a-zA-Z0-9]+)\?.*$/);
-  if (reg?.[1]) {
-    const tid = reg?.[1];
-    console.log("found following trackID: ", tid);
-    return tid;
-  }
-  console.log("invalid song ID in search bar");
-}

@@ -11,7 +11,6 @@ import {
   skipPrevious,
   skipNext,
   extractTrackDataFromResponse,
-  extractTrackIDFromSongURL,
 } from "../../util/apiutils";
 import { spotifyLogout } from "../../util/authutils";
 import {
@@ -49,7 +48,6 @@ export default function Home() {
   const [acceptedEULA, setAcceptedEULA] = useState<boolean>(false);
   const [aboutOpen, setAboutOpen] = useState<boolean>(false);
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
-  const [searchText] = useState<string>(""); // reserved for future URL-search feature
   const [songName, setSongName] = useState<string>("");
   const [artists, setArtists] = useState<string[]>([]);
   const [trackURL, setTrackURL] = useState<string>("");
@@ -197,7 +195,7 @@ export default function Home() {
       if (typeof prog === "number") setProgressMs(prog);
       if (typeof dur === "number") setDurationMs(dur);
 
-      if (!userIsTyping.current && !searchText) {
+      if (!userIsTyping.current) {
         const responseTrackID = extractTrackIDFromResponse(response);
         if (responseTrackID && responseTrackID !== trackID) {
           setTrackID(responseTrackID);
@@ -207,7 +205,7 @@ export default function Home() {
       if (error?.response?.status == 401) reauthenticateUser();
       updateIsPlayingIfNecessary(null);
     }
-  }, [trackID, searchText]);
+  }, [trackID]);
 
   useEffect(() => {
     loadTrackDataFromID();
