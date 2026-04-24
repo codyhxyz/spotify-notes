@@ -606,16 +606,16 @@ export default function Home() {
               <button className="modal-close" onClick={() => setAboutOpen(false)}>✕</button>
               <h2>what is this?</h2>
               <p>
-                I built this because I'm a DJ, and DJing requires you to constantly organize your thoughts around huge amounts of music. I was already taking notes, but the flow was a mess — switching between Spotify and a notes app, trying to remember which song I was even thinking about. I needed something that just lived alongside what I was listening to.
+                I built this because I&apos;m a DJ, and DJing requires you to constantly organize your thoughts around huge amounts of music. I was already taking notes, but the flow was a mess — switching between Spotify and a notes app, trying to remember which song I was even thinking about. I needed something that just lived alongside what I was listening to.
               </p>
               <p>
-                The thing that felt impossible to me was that nothing like this existed. Spotify gives you access to all this music but no way to document your thoughts about it. If note-taking were a first-party Spotify feature, I think way more people would naturally become music note-takers — it's just too inconvenient otherwise.
+                The thing that felt impossible to me was that nothing like this existed. Spotify gives you access to all this music but no way to document your thoughts about it. If note-taking were a first-party Spotify feature, I think way more people would naturally become music note-takers — it&apos;s just too inconvenient otherwise.
               </p>
               <p>
-                The core insight that made this feel right was: instead of making you navigate to a song, the app just follows whatever you're currently playing. You open it, and it's already there. That made the whole thing feel instant.
+                The core insight that made this feel right was: instead of making you navigate to a song, the app just follows whatever you&apos;re currently playing. You open it, and it&apos;s already there. That made the whole thing feel instant.
               </p>
               <p>
-                Beyond DJs, I've heard from friends that it's useful for piano students learning songs, for playlist curators, for people who just want to capture why a song hits them the way it does. Music makes people think — this is just a place to put those thoughts.
+                Beyond DJs, I&apos;ve heard from friends that it&apos;s useful for piano students learning songs, for playlist curators, for people who just want to capture why a song hits them the way it does. Music makes people think — this is just a place to put those thoughts.
               </p>
             </div>
           </div>
