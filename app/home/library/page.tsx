@@ -422,11 +422,6 @@ export default function Library() {
         {rows !== null && rows.length === 0 && (
           <section className="lib-empty fade d3">
             <div className="lib-empty-title">No notes yet.</div>
-            <div className="lib-empty-sub">
-              Play something on Spotify and start writing.
-              <br />
-              This page will remember every track you wrote about.
-            </div>
             <button className="chip" onClick={() => router.push("/home")}>
               Take me home
             </button>
