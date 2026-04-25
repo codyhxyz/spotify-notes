@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
+import { assertSameOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,12 +27,17 @@ export async function GET() {
 
 // POST /api/users  body: { accepted_eula }  -> upsert
 export async function POST(req: NextRequest) {
+  const originErr = assertSameOrigin(req);
+  if (originErr) return originErr;
+
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const body = await req.json();
-  const acceptedEula: boolean = !!body?.accepted_eula;
+  const body = (await req.json().catch(() => ({}))) as {
+    accepted_eula?: unknown;
+  };
+  const acceptedEula = !!body?.accepted_eula;
 
   await db
     .insert(schema.users)

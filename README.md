@@ -16,11 +16,17 @@ DJing means holding structured opinions about an absurd amount of music. Spotify
 
 ## Tech stack
 
-- Next.js 13.4 (App Router) on Vercel
-- NextAuth with the Spotify provider (JWT sessions, refresh-token rotation)
+- Next.js 16 (App Router) on Vercel, React 19
+- Auth.js v5 (next-auth) with the Spotify provider (JWT sessions, refresh-token rotation)
 - Drizzle ORM over Neon Postgres (`postgres-js` driver)
-- Tailwind for layout, custom CSS for theming
-- DOMPurify to sanitize note HTML, `use-debounce` for autosave, `axios` for Spotify API calls
+- Custom CSS for layout/theming
+- DOMPurify to sanitize note HTML, `use-debounce` for autosave
+
+The Spotify access token never reaches the browser — every Spotify call goes
+through `/api/spotify/*` server routes that read the token from the JWT cookie.
+Track metadata (name, artists, art) is denormalized onto the `notes` row at
+save time so the Library view renders straight from Postgres without a
+round-trip to Spotify on every load.
 
 ## Local setup
 
@@ -37,16 +43,17 @@ Fill in `.env.local`:
 
 - `DATABASE_URL` — Postgres connection string (Neon pooled URL works).
 - `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` — from the Spotify developer dashboard. Add `http://localhost:3000/api/auth/callback/spotify` as a redirect URI on the app.
-- `NEXTAUTH_SECRET` — generate with `openssl rand -base64 32`.
-- `NEXTAUTH_URL` — `http://localhost:3000` for local dev.
+- `AUTH_SECRET` — generate with `openssl rand -base64 32`. The legacy `NEXTAUTH_SECRET` name still works.
+- `AUTH_URL` — `http://localhost:3000` for local dev. Auto-detected on Vercel; legacy `NEXTAUTH_URL` still works.
 
-Apply the schema. There is no `drizzle-kit migrate` script wired up; the canonical migration is a plain SQL file:
+Apply the schema. Migrations are plain SQL files; run them in numbered order:
 
 ```bash
 psql "$DATABASE_URL" -f migrations/001_initial.sql
+psql "$DATABASE_URL" -f migrations/002_track_metadata.sql
 ```
 
-(Or paste the contents of `migrations/001_initial.sql` into the Neon SQL editor.)
+(Or paste the contents of each into the Neon SQL editor.)
 
 Then:
 
@@ -63,22 +70,30 @@ app/
   page.tsx              # landing / sign-in
   home/page.tsx         # now-playing + note editor
   home/library/page.tsx # searchable gallery of all your notes
-  components/           # SettingsModal, shared UI
+  components/           # SettingsModal, EulaModal, shared UI
   api/
     auth/[...nextauth]/ # NextAuth Spotify provider
-    notes/route.ts      # GET / PUT / DELETE single notes
-    notes/list/route.ts # GET all notes for the user
+    notes/route.ts      # GET / PUT / DELETE single notes (PUT supports
+                        #   optimistic concurrency via expected_updated_at)
+    notes/list/route.ts # cursor-paginated, hydrated with track metadata
     users/route.ts      # EULA-accept row
+    spotify/            # server-side proxy: playback, track, play, pause,
+                        #   next, previous. The Spotify access token lives
+                        #   only in the JWT cookie.
 lib/
   auth.ts               # NextAuth options + Spotify token refresh
   db.ts                 # Drizzle client (postgres-js)
   db/schema.ts          # users, notes tables
+  spotify.ts            # server-side Spotify Web API helper
+  origin.ts             # Origin/Referer-based CSRF guard for write routes
 util/
-  apiutils.ts           # Spotify Web API wrappers
+  apiutils.ts           # browser wrappers around /api/spotify/*
+  components.tsx        # SVG icons + clickable timestamp chip
   theme.ts              # theme switcher
 migrations/
   001_initial.sql       # users + notes schema
-middleware.ts           # gates /home/* on a NextAuth session
+  002_track_metadata.sql# denormalized track metadata + list index
+proxy.ts                # gates /home/* on a NextAuth session
 ```
 
 ## Deployment

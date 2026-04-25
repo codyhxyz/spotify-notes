@@ -1,164 +1,77 @@
-import axios, { AxiosResponse } from "axios";
+// Browser-side wrappers around our /api/spotify/* proxy. The Spotify access
+// token lives only in the JWT cookie; clients never see it.
 
-// get track data from spotify
-export async function gettrack(
-  trackID: string | undefined,
-  access_token: string | undefined
-) {
-  if (!access_token) return;
-  // console.log('getting track...')
-  const TRACK_ENDPOINT = "https://api.spotify.com/v1/tracks/";
-  const track_req = TRACK_ENDPOINT + trackID;
-  const headers_obj = {
-    headers: {
-      Authorization: `Bearer ` + access_token,
-    },
-  };
+export type Playback = {
+  playing: boolean;
+  progressMs: number;
+  durationMs: number;
+  trackId: string | null;
+  hasActiveDevice: boolean;
+};
 
-  return axios.get(track_req, headers_obj);
-}
+export type TrackMeta = {
+  track_id: string;
+  name: string;
+  artists: string[];
+  artist_urls: string[];
+  image_url: string;
+  track_url: string;
+  album_url: string;
+};
 
-// plays track upon clicking the play button, or clicking on a timestamp
-export async function playtrack(
-  trackID: string | undefined,
-  access_token: string | undefined,
-  device_id: string | undefined = undefined,
-  position_ms: number = 0
-) {
-  console.log("about to play tracckkk w position_ms ", position_ms);
-  if (!access_token) return;
-  let url = "https://api.spotify.com/v1/me/player/play";
-  // include preferred device in our request if there is one
-  if (device_id) {
-    url += `?device_id=${device_id}`;
+export class AuthExpiredError extends Error {
+  constructor() {
+    super("auth_expired");
+    this.name = "AuthExpiredError";
   }
-  let data_obj: any = {
-    uris: [`spotify:track:${trackID}`],
-  };
-  data_obj.position_ms = position_ms;
-  const headers_obj = {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-      "Content-Type": "application/json",
-    },
-  };
-  // console.log('trying to play track ID: ' + trackID)
-  return axios.put(url, data_obj, headers_obj);
 }
 
-// pauses whatever track is currently playing on Spotify
-export async function pausetrack(
-  access_token: string | undefined
-): Promise<AxiosResponse<any, any> | void> {
-  if (!access_token) return;
-  // console.log('asking Spotify to pause track...')
-  const PAUSE_ENDPOINT = "https://api.spotify.com/v1/me/player/pause";
-  const headers_obj = {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-    },
-  };
-
-  return axios.put(PAUSE_ENDPOINT, {}, headers_obj);
-}
-
-// skip to previous track
-export async function skipPrevious(
-  access_token: string | undefined
-): Promise<AxiosResponse<any, any> | void> {
-  if (!access_token) return;
-  const url = "https://api.spotify.com/v1/me/player/previous";
-  const headers_obj = {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-    },
-  };
-
-  return axios.post(url, {}, headers_obj);
-}
-
-// pauses whatever track is currently playing on Spotify
-export async function skipNext(
-  access_token: string | undefined
-): Promise<AxiosResponse<any, any> | void> {
-  if (!access_token) return;
-  const url = "https://api.spotify.com/v1/me/player/next";
-  const headers_obj = {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-    },
-  };
-
-  return axios.post(url, {}, headers_obj);
-}
-
-// gets current track being played & currently playing
-export async function getplaybackstate(
-  access_token: string | undefined
-): Promise<AxiosResponse<any, any> | void> {
-  if (!access_token) return;
-  // console.log('getting playback state from spotify...')
-  const PLAYER_ENDPOINT = "https://api.spotify.com/v1/me/player";
-  const headers_obj = {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-    },
-  };
-
-  return axios.get(PLAYER_ENDPOINT, headers_obj);
-}
-
-// get avail devices
-export async function getavailabledevices(access_token: string | undefined) {
-  if (!access_token) return;
-  console.log("getting avail devices from spotify...");
-  const DEVICES_ENDPOINT = "https://api.spotify.com/v1/me/player/devices";
-  const config = {
-    headers: {
-      Authorization: `Bearer ${access_token}`,
-    },
-  };
-  return axios.get(DEVICES_ENDPOINT, config);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////
-
-// params: track object
-// returns: song name, image url, and artists
-export function extractTrackDataFromResponse(track: any) {
-  const song_name = track.name;
-  let artists = [];
-  let artist_urls = [];
-  for (let i = 0; i < track.artists.length; i++) {
-    let curr_artist = track.artists[i].name;
-    artists.push(curr_artist);
-    artist_urls.push(track.artists[i].external_urls["spotify"]);
+async function jsonFetch<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, init);
+  if (res.status === 401) {
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      // ignore
+    }
+    if ((body as { error?: string } | null)?.error === "auth_expired") {
+      throw new AuthExpiredError();
+    }
+    throw new Error(`unauthorized`);
   }
-  const image_url = track.album.images[0].url;
-  const track_url = track.external_urls["spotify"];
-  const album_url = track.album.external_urls["spotify"];
-  return [song_name, image_url, track_url, album_url, artist_urls, artists];
+  if (!res.ok) {
+    throw new Error(`request failed: ${res.status}`);
+  }
+  return (await res.json()) as T;
 }
 
-// batch fetch multiple tracks. spotify max is 50 ids per call.
-export async function getTracksBatch(
-  trackIDs: string[],
-  access_token: string | undefined
-) {
-  if (!access_token || trackIDs.length === 0) return [];
-  const chunks: string[][] = [];
-  for (let i = 0; i < trackIDs.length; i += 50) {
-    chunks.push(trackIDs.slice(i, i + 50));
-  }
-  const headers_obj = {
-    headers: { Authorization: `Bearer ${access_token}` },
-  };
-  const results: any[] = [];
-  for (const chunk of chunks) {
-    const url = `https://api.spotify.com/v1/tracks?ids=${chunk.join(",")}`;
-    const resp = await axios.get(url, headers_obj);
-    const tracks = resp?.data?.tracks ?? [];
-    for (const t of tracks) if (t) results.push(t);
-  }
-  return results;
+export function getPlayback(): Promise<Playback> {
+  return jsonFetch<Playback>("/api/spotify/playback");
+}
+
+export function getTrackMeta(trackId: string): Promise<TrackMeta> {
+  return jsonFetch<TrackMeta>(
+    `/api/spotify/track/${encodeURIComponent(trackId)}`
+  );
+}
+
+export function playTrack(trackId: string, positionMs: number = 0): Promise<{ ok: true }> {
+  return jsonFetch("/api/spotify/play", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ track_id: trackId, position_ms: positionMs }),
+  });
+}
+
+export function pauseTrack(): Promise<{ ok: true }> {
+  return jsonFetch("/api/spotify/pause", { method: "PUT" });
+}
+
+export function skipNext(): Promise<{ ok: true }> {
+  return jsonFetch("/api/spotify/next", { method: "POST" });
+}
+
+export function skipPrevious(): Promise<{ ok: true }> {
+  return jsonFetch("/api/spotify/previous", { method: "POST" });
 }

@@ -1,19 +1,14 @@
-export const timestampRegex = /(\d{0,2}):([0-5][0-9])/;
-export const timestampRegexGlobal = /(\d{0,2}):([0-5][0-9])/g;
+// Match `M:SS` / `MM:SS` timestamps. Requires at least one minute digit so
+// random `:23` substrings inside words don't get parsed as timestamps.
+export const timestampRegex = /\b(\d{1,2}):([0-5][0-9])\b/;
+export const timestampRegexGlobal = /\b(\d{1,2}):([0-5][0-9])\b/g;
 
-export function timestampToMilliseconds(stamp: string) {
-  console.log("converting timestamptoms from button click");
+export function timestampToMilliseconds(stamp: string): number {
   const matches = stamp.match(timestampRegex);
-
   if (!matches) {
-    console.log("got error w following string: " + stamp);
-    throw new Error("Invalid timestamp format.");
+    throw new Error(`Invalid timestamp format: ${stamp}`);
   }
-
-  const minutes = parseInt(matches[1] || "0", 10); // If there's no minutes part, default to 0
+  const minutes = parseInt(matches[1] || "0", 10);
   const seconds = parseInt(matches[2], 10);
-  const ms = (minutes * 60 + seconds) * 1000; // Convert to milliseconds
-  console.log("result of conversion is from ", stamp);
-  console.log("to ", ms);
-  return ms;
+  return (minutes * 60 + seconds) * 1000;
 }

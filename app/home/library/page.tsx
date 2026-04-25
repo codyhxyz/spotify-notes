@@ -3,11 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
-import {
-  getTracksBatch,
-  playtrack,
-  getavailabledevices,
-} from "../../../util/apiutils";
+import { AuthExpiredError, playTrack } from "../../../util/apiutils";
+import { spotifyLogin } from "../../../util/authutils";
 import { TimeStamp } from "../../../util/components";
 import SettingsModal from "../../components/SettingsModal";
 import { timestampRegexGlobal } from "@/util/miscutils";
@@ -20,19 +17,19 @@ import {
   saveTheme,
 } from "../../../util/theme";
 
-type NoteRow = {
+// Server-canonical row shape (matches /api/notes/list response). All metadata
+// fields are nullable for rows written by older app versions; the UI falls
+// back gracefully on missing values.
+type LibraryRow = {
   track_id: string;
   note: string;
   updated_at: string;
-};
-
-type HydratedNote = NoteRow & {
-  name: string;
-  artists: string[];
-  artistURLs: string[];
-  imageURL: string;
-  trackURL: string;
-  albumURL: string;
+  name: string | null;
+  artists: string[] | null;
+  artist_urls: string[] | null;
+  image_url: string | null;
+  track_url: string | null;
+  album_url: string | null;
 };
 
 type SortKey = "recent" | "oldest" | "longest" | "artist";
@@ -44,43 +41,20 @@ const SORT_LABELS: Record<SortKey, string> = {
   artist: "Artist A–Z",
 };
 
-const META_CACHE_KEY = "spotify-notes:track-meta:v1";
-
-type CachedMeta = Omit<HydratedNote, "note" | "updated_at">;
-
-function loadMetaCache(): Record<string, CachedMeta> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = sessionStorage.getItem(META_CACHE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveMetaCache(cache: Record<string, CachedMeta>) {
-  if (typeof window === "undefined") return;
-  try {
-    sessionStorage.setItem(META_CACHE_KEY, JSON.stringify(cache));
-  } catch {
-    // storage full; skip
-  }
-}
-
-function stripHTML(html: string) {
+function stripHTML(html: string): string {
   if (typeof window === "undefined") return html.replace(/<[^>]+>/g, " ");
   const d = document.createElement("div");
   d.innerHTML = html;
   return d.textContent ?? "";
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function highlight(text: string, q: string) {
   if (!q) return text;
-  const terms = q
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const terms = q.trim().split(/\s+/).filter(Boolean).map(escapeRegex);
   if (terms.length === 0) return text;
   const re = new RegExp(`(${terms.join("|")})`, "ig");
   const parts = text.split(re);
@@ -89,7 +63,7 @@ function highlight(text: string, q: string) {
   );
 }
 
-function snippetAround(text: string, q: string, max = 180) {
+function snippetAround(text: string, q: string, max = 180): string {
   const plain = text.replace(/\s+/g, " ").trim();
   if (!q) return plain.slice(0, max) + (plain.length > max ? "…" : "");
   const lower = plain.toLowerCase();
@@ -98,22 +72,29 @@ function snippetAround(text: string, q: string, max = 180) {
   if (idx < 0) return plain.slice(0, max) + (plain.length > max ? "…" : "");
   const start = Math.max(0, idx - 40);
   const end = Math.min(plain.length, start + max);
-  return (start > 0 ? "…" : "") + plain.slice(start, end) + (end < plain.length ? "…" : "");
+  return (
+    (start > 0 ? "…" : "") +
+    plain.slice(start, end) +
+    (end < plain.length ? "…" : "")
+  );
 }
 
 export default function Library() {
-  const { data: session, status } = useSession();
+  const { status, data: session } = useSession();
   const router = useRouter();
 
   const [theme, setTheme] = useState<Theme>("rose");
-  const [rows, setRows] = useState<NoteRow[] | null>(null);
-  const [meta, setMeta] = useState<Record<string, HydratedNote>>({});
+  const [rows, setRows] = useState<LibraryRow[] | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("recent");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openTrack, setOpenTrack] = useState<string | null>(null);
   const [hoverArt, setHoverArt] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  const sessionError = (session as { error?: string } | null)?.error;
 
   useEffect(() => {
     const t = loadTheme();
@@ -126,7 +107,13 @@ export default function Library() {
   }, [status, router]);
 
   useEffect(() => {
+    if (sessionError === "RefreshAccessTokenError") spotifyLogin("/home/library");
+  }, [sessionError]);
+
+  // Initial page load.
+  useEffect(() => {
     if (status !== "authenticated") return;
+    let cancelled = false;
     (async () => {
       try {
         const res = await fetch("/api/notes/list");
@@ -134,72 +121,54 @@ export default function Library() {
           window.location.href = "/";
           return;
         }
-        const json = await res.json();
-        setRows(json?.notes ?? []);
-      } catch (e) {
-        console.error(e);
-        setRows([]);
+        const json = (await res.json()) as {
+          notes: LibraryRow[];
+          next_cursor: string | null;
+        };
+        if (cancelled) return;
+        setRows(json.notes);
+        setNextCursor(json.next_cursor);
+      } catch (err) {
+        console.error("[library] list failed:", err);
+        if (!cancelled) setRows([]);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [status]);
 
-  useEffect(() => {
-    if (!rows || rows.length === 0) return;
-    const token = session?.accessToken;
-    if (!token) return;
-
-    const cache = loadMetaCache();
-    const seeded: Record<string, HydratedNote> = {};
-    for (const r of rows) {
-      if (cache[r.track_id]) seeded[r.track_id] = { ...cache[r.track_id], ...r };
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(
+        `/api/notes/list?cursor=${encodeURIComponent(nextCursor)}`
+      );
+      const json = (await res.json()) as {
+        notes: LibraryRow[];
+        next_cursor: string | null;
+      };
+      setRows((prev) => (prev ? [...prev, ...json.notes] : json.notes));
+      setNextCursor(json.next_cursor);
+    } catch (err) {
+      console.error("[library] load-more failed:", err);
+    } finally {
+      setLoadingMore(false);
     }
-    setMeta(seeded);
+  }, [nextCursor, loadingMore]);
 
-    const missing = rows.filter((r) => !cache[r.track_id]).map((r) => r.track_id);
-    if (missing.length === 0) return;
-
-    (async () => {
-      try {
-        const tracks = await getTracksBatch(missing, token);
-        const nextMeta: Record<string, HydratedNote> = { ...seeded };
-        const nextCache: Record<string, CachedMeta> = { ...cache };
-        for (const t of tracks) {
-          const row = rows.find((r) => r.track_id === t.id);
-          if (!row) continue;
-          const cm: CachedMeta = {
-            track_id: row.track_id,
-            name: t.name,
-            artists: (t.artists ?? []).map((a: any) => a.name),
-            artistURLs: (t.artists ?? []).map(
-              (a: any) => a.external_urls?.spotify ?? "#"
-            ),
-            imageURL: t.album?.images?.[0]?.url ?? "",
-            trackURL: t.external_urls?.spotify ?? "#",
-            albumURL: t.album?.external_urls?.spotify ?? "#",
-          };
-          nextCache[t.id] = cm;
-          nextMeta[t.id] = { ...cm, ...row };
-        }
-        setMeta(nextMeta);
-        saveMetaCache(nextCache);
-      } catch (e: any) {
-        if (e?.response?.status === 401) {
-          window.location.href = "/";
-        } else {
-          console.error(e);
-        }
-      }
-    })();
-  }, [rows, session?.accessToken]);
-
+  // Backdrop tracks hovered/opened card.
   useEffect(() => {
-    const img = openTrack ? meta[openTrack]?.imageURL : hoverArt ?? undefined;
+    const img = openTrack
+      ? rows?.find((r) => r.track_id === openTrack)?.image_url
+      : hoverArt ?? undefined;
     if (img) {
       document.body.style.setProperty("--album-image", `url("${img}")`);
     } else {
       document.body.style.removeProperty("--album-image");
     }
-  }, [hoverArt, openTrack, meta]);
+  }, [hoverArt, openTrack, rows]);
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -236,17 +205,11 @@ export default function Library() {
     saveTheme(t);
   }
 
-  const hydrated: HydratedNote[] = useMemo(() => {
-    if (!rows) return [];
-    return rows
-      .map((r) => meta[r.track_id])
-      .filter(Boolean) as HydratedNote[];
-  }, [rows, meta]);
-
   const filtered = useMemo(() => {
+    const all = rows ?? [];
     const q = query.trim().toLowerCase();
     const base = q
-      ? hydrated.filter((n) => {
+      ? all.filter((n) => {
           const hay =
             (n.name ?? "") +
             " " +
@@ -255,7 +218,7 @@ export default function Library() {
             stripHTML(n.note);
           return hay.toLowerCase().includes(q);
         })
-      : hydrated;
+      : all;
 
     const sorted = [...base];
     switch (sort) {
@@ -283,56 +246,43 @@ export default function Library() {
         break;
     }
     return sorted;
-  }, [hydrated, query, sort]);
+  }, [rows, query, sort]);
 
-  const playThis = useCallback(
-    async (trackId: string) => {
-      const token = session?.accessToken;
-      if (!token) return;
-      try {
-        let deviceId: string | undefined;
-        const dev = await getavailabledevices(token);
-        const devices = dev?.data?.devices ?? [];
-        for (const d of devices) {
-          if (d?.id && !d?.is_restricted) {
-            deviceId = d.id;
-            break;
-          }
-        }
-        await playtrack(trackId, token, deviceId);
-      } catch (e: any) {
-        if (e?.response?.status === 403) {
-          alert("Device inaccessible; please change your Spotify output device.");
-        } else if (e?.response?.status === 401) {
-          window.location.href = "/";
-        } else {
-          console.error(e);
-        }
+  const playThis = useCallback(async (trackId: string) => {
+    try {
+      await playTrack(trackId);
+    } catch (err) {
+      if (err instanceof AuthExpiredError) {
+        spotifyLogin("/home/library");
+        return;
       }
-    },
-    [session?.accessToken]
-  );
+      console.error("[library] play failed:", err);
+      alert("Couldn't start playback. Make sure Spotify has an active device.");
+    }
+  }, []);
 
   const deleteNote = useCallback(async (trackId: string) => {
     if (!confirm("Delete this note? The song stays, the words go.")) return;
     try {
-      await fetch("/api/notes", {
+      const res = await fetch("/api/notes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ track_id: trackId, note: "" }),
       });
-      setRows((prev) => (prev ? prev.filter((r) => r.track_id !== trackId) : prev));
+      if (!res.ok) throw new Error(`delete failed: ${res.status}`);
+      setRows((prev) =>
+        prev ? prev.filter((r) => r.track_id !== trackId) : prev
+      );
       setOpenTrack(null);
-      const cache = loadMetaCache();
-      delete cache[trackId];
-      saveMetaCache(cache);
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error("[library] delete failed:", err);
       alert("Couldn't delete. Try again.");
     }
   }, []);
 
-  const openNote = openTrack ? meta[openTrack] : null;
+  const openNote = openTrack
+    ? rows?.find((r) => r.track_id === openTrack) ?? null
+    : null;
 
   return (
     <>
@@ -375,8 +325,8 @@ export default function Library() {
             {rows === null
               ? "Loading your library…"
               : rows.length === 0
-              ? "Nothing here yet"
-              : `${hydrated.length} ${hydrated.length === 1 ? "note" : "notes"}`}
+                ? "Nothing here yet"
+                : `${rows.length}${nextCursor ? "+" : ""} ${rows.length === 1 ? "note" : "notes"}`}
           </div>
           <h1 className="lib-title">
             The <em>Library.</em>
@@ -404,7 +354,7 @@ export default function Library() {
             />
             <kbd className="lib-kbd">⌘K</kbd>
           </div>
-          {hydrated.length > 0 && (
+          {rows && rows.length > 0 && (
             <div className="lib-sorts">
               {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
                 <button
@@ -437,24 +387,24 @@ export default function Library() {
                 <button
                   key={n.track_id}
                   className="lib-card"
-                  onMouseEnter={() => setHoverArt(n.imageURL)}
+                  onMouseEnter={() => setHoverArt(n.image_url)}
                   onMouseLeave={() => setHoverArt(null)}
-                  onFocus={() => setHoverArt(n.imageURL)}
+                  onFocus={() => setHoverArt(n.image_url)}
                   onBlur={() => setHoverArt(null)}
                   onClick={() => setOpenTrack(n.track_id)}
                 >
                   <div
                     className="lib-card-art"
                     style={{
-                      backgroundImage: n.imageURL
-                        ? `url("${n.imageURL}")`
+                      backgroundImage: n.image_url
+                        ? `url("${n.image_url}")`
                         : undefined,
                     }}
                   >
                     <div className="lib-card-shade" aria-hidden />
                     <div className="lib-card-meta">
                       <div className="lib-card-title">
-                        {highlight(n.name, query)}
+                        {highlight(n.name ?? "Unknown track", query)}
                       </div>
                       <div className="lib-card-artist">
                         {highlight((n.artists ?? []).join(", "), query)}
@@ -475,6 +425,18 @@ export default function Library() {
               );
             })}
           </section>
+        )}
+
+        {nextCursor && filtered.length > 0 && (
+          <div style={{ display: "flex", justifyContent: "center", padding: "24px 0 56px" }}>
+            <button
+              className="chip"
+              onClick={loadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore ? "Loading…" : "Load more"}
+            </button>
+          </div>
         )}
 
         {rows !== null && rows.length > 0 && filtered.length === 0 && (
@@ -506,8 +468,8 @@ export default function Library() {
               <div
                 className="lib-drawer-art"
                 style={{
-                  backgroundImage: openNote.imageURL
-                    ? `url("${openNote.imageURL}")`
+                  backgroundImage: openNote.image_url
+                    ? `url("${openNote.image_url}")`
                     : undefined,
                 }}
               />
@@ -524,18 +486,18 @@ export default function Library() {
               </div>
               <h2 className="lib-drawer-title">
                 <a
-                  href={openNote.trackURL}
+                  href={openNote.track_url ?? "#"}
                   target="_blank"
                   rel="noreferrer"
                   style={{ color: "inherit" }}
                 >
-                  {openNote.name.split(" ").length > 1 ? (
+                  {openNote.name && openNote.name.split(" ").length > 1 ? (
                     <>
                       {openNote.name.split(" ").slice(0, -1).join(" ")}{" "}
                       <em>{openNote.name.split(" ").slice(-1)[0]}</em>
                     </>
                   ) : (
-                    <em>{openNote.name}</em>
+                    <em>{openNote.name ?? "Unknown track"}</em>
                   )}
                 </a>
               </h2>
@@ -545,14 +507,14 @@ export default function Library() {
                   <span key={i}>
                     <b>
                       <a
-                        href={openNote.artistURLs?.[i] ?? "#"}
+                        href={openNote.artist_urls?.[i] ?? "#"}
                         target="_blank"
                         rel="noreferrer"
                       >
                         {a}
                       </a>
                     </b>
-                    {i < openNote.artists.length - 1 ? ", " : ""}
+                    {i < (openNote.artists ?? []).length - 1 ? ", " : ""}
                   </span>
                 ))}
               </div>
@@ -590,8 +552,6 @@ export default function Library() {
                       <TimeStamp
                         key={i}
                         trackID={openNote.track_id}
-                        access_token={session?.accessToken}
-                        device_id={undefined}
                         stamp={s}
                       />
                     ))}
@@ -606,7 +566,6 @@ export default function Library() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        accessToken={session?.accessToken}
       />
     </>
   );

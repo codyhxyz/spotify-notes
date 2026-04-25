@@ -1,5 +1,5 @@
-import type { NextAuthOptions } from "next-auth";
-import SpotifyProvider from "next-auth/providers/spotify";
+import NextAuth from "next-auth";
+import Spotify from "next-auth/providers/spotify";
 import { db, schema } from "@/lib/db";
 
 // Spotify scopes — derived from the actual API endpoints the app hits:
@@ -54,11 +54,22 @@ async function refreshSpotifyAccessToken(refreshToken: string) {
   };
 }
 
-export const authOptions: NextAuthOptions = {
+// Auth.js v5: NextAuth() returns the four primitives below. `auth()` is the
+// universal server-side session reader (replaces v4's getServerSession).
+// `handlers` plugs into the App Router catchall route.
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  // v5 reads AUTH_SECRET by default; we keep NEXTAUTH_SECRET working as a
+  // fallback so existing prod env vars don't have to be renamed in lockstep
+  // with the deploy.
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  // Trust the host header when running behind Vercel / a reverse proxy.
+  // Vercel auto-detects this, but being explicit keeps non-Vercel hosts
+  // (preview branches on custom domains, self-host) working without surprise.
+  trustHost: true,
   providers: [
-    SpotifyProvider({
-      clientId: process.env.SPOTIFY_CLIENT_ID!,
-      clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
+    Spotify({
+      clientId: process.env.SPOTIFY_CLIENT_ID,
+      clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
       authorization: {
         // Locale-prefixed URL (`/en/authorize`) bypasses the Spotify iOS app's
         // universal-link interception of `/authorize`. Without this, mobile
@@ -100,6 +111,7 @@ export const authOptions: NextAuthOptions = {
           accessToken: refreshed.accessToken,
           refreshToken: refreshed.refreshToken,
           expiresAt: refreshed.expiresAt,
+          error: undefined,
         };
       } catch (err) {
         console.error("[auth] token refresh failed:", err);
@@ -107,16 +119,13 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async session({ session, token }) {
-      const t = token as {
-        spotifyUserId?: string;
-        accessToken?: string;
-        error?: string;
-      };
-      // Expose Spotify user id (canonical user_id) and access token to clients.
+      const t = token as { spotifyUserId?: string; error?: string };
+      // Expose only the canonical Spotify user id and any auth error to the
+      // client. The Spotify access token stays server-side; clients hit our
+      // own /api/spotify/* proxy which reads the token from the JWT cookie.
       if (session.user) {
         (session.user as { id?: string }).id = t.spotifyUserId;
       }
-      (session as { accessToken?: string }).accessToken = t.accessToken;
       if (t.error) (session as { error?: string }).error = t.error;
       return session;
     },
@@ -143,4 +152,4 @@ export const authOptions: NextAuthOptions = {
     signIn: "/",
   },
   debug: process.env.NODE_ENV !== "production",
-};
+});

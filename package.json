@@ -6,33 +6,26 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "dev:local": "NODE_ENV=development env-cmd -f .env.development.local next dev"
   },
   "dependencies": {
-    "@types/node": "20.3.1",
-    "@types/react": "18.2.13",
-    "@types/react-dom": "18.2.6",
-    "autoprefixer": "10.4.14",
-    "axios": "^1.4.0",
-    "dompurify": "^3.0.4",
-    "drizzle-orm": "^0.36.4",
-    "eslint": "8.43.0",
-    "eslint-config-next": "13.4.7",
-    "lodash": "^4.17.21",
-    "next": "13.4.7",
-    "next-auth": "^4.24.14",
-    "postcss": "8.4.24",
+    "dompurify": "^3.2.3",
+    "drizzle-orm": "^0.45.2",
+    "next": "^16.2.4",
+    "next-auth": "^5.0.0-beta.31",
     "postgres": "^3.4.5",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "tailwindcss": "3.3.2",
-    "typescript": "5.1.3",
-    "use-debounce": "^9.0.4"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "use-debounce": "^10.0.4"
   },
   "devDependencies": {
-    "@types/dompurify": "^3.0.2",
-    "@types/lodash": "^4.14.195",
-    "drizzle-kit": "^0.28.1"
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.3",
+    "@types/react-dom": "^19.0.2",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^16.2.4",
+    "typescript": "^5.7.2"
   }
 }
