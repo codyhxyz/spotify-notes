@@ -1,16 +1,38 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { spotifyLogin } from "../util/authutils";
+import {
+  Theme,
+  THEME_LABELS,
+  applyTheme,
+  loadTheme,
+  nextTheme,
+  saveTheme,
+} from "../util/theme";
 
 export default function Home() {
   const { status } = useSession();
   const router = useRouter();
+  const [theme, setTheme] = useState<Theme>("rose");
 
   useEffect(() => {
     if (status === "authenticated") router.replace("/home");
   }, [status, router]);
+
+  // Pull the persisted theme on mount so the orb's title/aria reflect it.
+  // Providers.tsx already calls applyTheme on mount; this is just for UI.
+  useEffect(() => {
+    setTheme(loadTheme());
+  }, []);
+
+  function cycleTheme() {
+    const t = nextTheme(theme);
+    setTheme(t);
+    applyTheme(t);
+    saveTheme(t);
+  }
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -27,7 +49,13 @@ export default function Home() {
         <div className="kicker">— A private journal for the songs you&apos;re listening to</div>
         <h1>
           My Song <em>Notes</em>
-          <span className="title-orb" aria-hidden />
+          <button
+            type="button"
+            className="title-orb"
+            onClick={cycleTheme}
+            title={`Theme: ${THEME_LABELS[theme]} · click to change`}
+            aria-label={`Change theme (current: ${THEME_LABELS[theme]})`}
+          />
         </h1>
         <p className="lede">
           Legally I am not allowed to call this &ldquo;Spotify Notes&rdquo;.

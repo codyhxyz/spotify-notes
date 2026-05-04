@@ -776,25 +776,38 @@ input, textarea {
   color: transparent;
 }
 /*
-  The "period" after Notes is the brand orb. Sized in `em` so it tracks
-  the headline's clamp() font-size; positioned to sit where a real
-  italic-serif period would sit (slightly above baseline, near the
-  x-height bottom). Same gradient as the in-app theme-picker .brand .orb
-  so the static and clickable orbs read as one identity.
+  The "period" after Notes is the brand orb, AND it's clickable — it
+  cycles themes the same way the topbar .brand .orb does. Sized in `em`
+  so it tracks the headline's clamp() font-size. The extra left margin
+  is italic-correction: Kalnia's italic `s` has a flourish that extends
+  past its glyph box, and without spacing the orb sits inside that
+  flourish. Same gradient + hover behavior as .brand .orb so the
+  static and clickable orbs read as one identity.
 */
 .login-hero h1 .title-orb {
   display: inline-block;
-  width: 0.42em;
-  height: 0.42em;
+  width: 0.3em;
+  height: 0.3em;
+  padding: 0;
+  border: none;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, var(--c1), var(--c2) 60%, var(--c3));
-  box-shadow: 0 0 0.5em var(--accent-shadow);
-  margin-left: 0.06em;
+  box-shadow: 0 0 0.4em var(--accent-shadow);
+  margin-left: 0.18em;
   /* Negative vertical-align dips the orb below baseline so its CENTER
-     sits roughly where a period would be, instead of the orb's bottom
-     resting on baseline (which would float it too high, like a degree
-     sign). */
-  vertical-align: -0.05em;
+     sits roughly where a period would be. */
+  vertical-align: -0.02em;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.login-hero h1 .title-orb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 0.5em var(--accent-shadow), 0 0 0 0.05em var(--glass-hi);
+}
+.login-hero h1 .title-orb:active { transform: scale(0.92); }
+.login-hero h1 .title-orb:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 0.04em var(--ink), 0 0 0.5em var(--accent-shadow);
 }
 .login-hero .lede {
   font-family: var(--font-display), serif;
