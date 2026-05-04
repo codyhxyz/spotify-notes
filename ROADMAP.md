@@ -23,7 +23,7 @@ Things I'd like to ship, roughly ordered by how much I want them. Nothing here i
 - **Collaborative notes.** Two people writing on the same track at the same time, CRDT-merged. The cost-benefit here is bad — most note-takers want their notes private, and the engineering surface for CRDT-over-contentEditable is real. Probably won't happen unless someone explicitly asks for it.
 - **AI summarization across your library.** "What did I think about Boards of Canada this year?" — pull every note tagged or matching, hand them to a model, get a paragraph back. Has to be opt-in, has to not silently send your notes to a third party.
 - **Setlist mode.** Drag a sequence of tracks-with-notes into a list, get a printable / phone-readable cheat sheet. This is what DJs actually want; everything else is incidental.
-- **Public library mode.** Opt-in, your notes become a personal music blog at `mysongnotes.vercel.app/u/yourname`. Probably best as a separate product.
+- **Public library mode.** Opt-in, your notes become a personal music blog at `songnotes.codyh.xyz/u/yourname`. Probably best as a separate product.
 
 ## Won't ship
 

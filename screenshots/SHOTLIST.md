@@ -6,7 +6,7 @@ What I (or future-me) need to grab when shipping a launch. The repo's marketing 
 
 - **Browser**: Chrome or Arc, fullscreen at 1440×900 logical (2880×1800 retina). Hide bookmarks bar, hide all extension chips, profile-icon-less window if possible (Incognito works for that).
 - **OS**: Mac with menu bar auto-hide on, or use [CleanShot X](https://cleanshot.com/) to crop out chrome.
-- **Site**: production at `https://mysongnotes.vercel.app` (logged in with a real account that has a populated library — at least 12 notes, mixed genres, so the Library view actually has content).
+- **Site**: production at `https://songnotes.codyh.xyz` (logged in with a real account that has a populated library — at least 12 notes, mixed genres, so the Library view actually has content).
 - **Theme**: Rose (the default). It's the most photogenic.
 - **Account state**: Spotify Premium, with an active device (open the desktop app, hit play once, then pause). The transport controls render disabled if there's no active device.
 
@@ -47,7 +47,7 @@ Keep it tight. No voiceover. Music in the background is the song you're annotati
 0:29  Click ▶ Play. Drawer closes back to the Library; in the background
       Spotify starts playing the new track (you can see the small
       now-playing badge update). (~3s)
-0:32  Final beat: cursor settles, end card with the URL "mysongnotes.vercel.app". (~3s)
+0:32  Final beat: cursor settles, end card with the URL "songnotes.codyh.xyz". (~3s)
 0:35  Done.
 ```
 
@@ -71,6 +71,6 @@ If the gif comes out >8MB (Twitter cap), drop fps to 14 and width to 960.
 - `MARKETING.md` — primary tweet attaches `demo.gif`; PH gallery uses the PNGs in numbered order.
 - GitHub repo social preview slot — generated from `app/opengraph-image.tsx`, not from these screenshots. Grab via:
   ```bash
-  curl -o /tmp/og.png https://mysongnotes.vercel.app/opengraph-image
+  curl -o /tmp/og.png https://songnotes.codyh.xyz/opengraph-image
   # then upload to https://github.com/codyhxyz/spotify-notes/settings → Social preview
   ```

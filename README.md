@@ -1,6 +1,6 @@
 # My Song Notes
 
-A rich-text journal that follows whatever you're playing on Spotify. Live at [mysongnotes.vercel.app](https://mysongnotes.vercel.app). The Library view at `/home/library` turns every note you've ever written into a searchable gallery of album-art cards.
+A rich-text journal that follows whatever you're playing on Spotify. Live at [songnotes.codyh.xyz](https://songnotes.codyh.xyz). The Library view at `/home/library` turns every note you've ever written into a searchable gallery of album-art cards.
 
 <!-- Demo gif goes here once recorded. See screenshots/SHOTLIST.md for the capture script. -->
 <!-- ![demo](./screenshots/demo.gif) -->

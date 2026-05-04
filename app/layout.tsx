@@ -9,7 +9,7 @@ import type { Metadata, Viewport } from "next";
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-  "https://mysongnotes.vercel.app";
+  "https://songnotes.codyh.xyz";
 
 const TITLE = "My Song Notes";
 const DESCRIPTION =

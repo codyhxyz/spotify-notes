@@ -24,9 +24,14 @@ export default async function Image() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "72px 80px",
+          // Rose-gold backdrop pulled from globals.css :root[data-theme="rose"]:
+          //   c1 #f0c36d honey, c2 #d4572a burnt orange, c3 #7a1f3f wine,
+          //   c4 #2b0c2e aubergine, c5 #140612 plum-black. Same gradient the
+          //   landing page actually renders against; the OG image was on a
+          //   wrong-pink palette before this fix.
           background:
-            "radial-gradient(120% 90% at 18% 22%, #ff6aa1 0%, #c93570 28%, #5c1538 62%, #150814 100%)",
-          color: "#fff",
+            "radial-gradient(120% 90% at 18% 22%, #f0c36d 0%, #d4572a 22%, #7a1f3f 55%, #2b0c2e 80%, #140612 100%)",
+          color: "#f3ecde",
           fontFamily: "Georgia, 'Times New Roman', serif",
         }}
       >
@@ -47,13 +52,16 @@ export default async function Image() {
               width: 22,
               height: 22,
               borderRadius: 999,
+              // Same ember stops as the favicon orb (design-lab/icons/A-orb.svg
+              // and B-orb-monogram.svg). Glow shadow is the rose theme's
+              // --accent-shadow value verbatim.
               background:
-                "radial-gradient(circle at 30% 30%, #ffd1e0, #ff5c93 60%, #6b1839)",
-              boxShadow: "0 0 28px rgba(255,108,162,0.85)",
+                "radial-gradient(circle at 36% 30%, #ffe6c2 0%, #ffd8a8 14%, #f0c36d 32%, #d4572a 56%, #7a1f3f 82%, #2b0c2e 100%)",
+              boxShadow: "0 0 28px rgba(212, 87, 42, 0.55)",
             }}
           />
           <span style={{ fontFamily: "system-ui, sans-serif", fontWeight: 600 }}>
-            mysongnotes.vercel.app
+            songnotes.codyh.xyz
           </span>
         </div>
 
@@ -80,7 +88,9 @@ export default async function Image() {
             }}
           >
             My Song&nbsp;
-            <span style={{ fontStyle: "italic", fontWeight: 400 }}>
+            {/* Peach (--accent-hi) on the italic word, mirroring the in-app
+                wordmark where `.song-title em` is colored --accent-hi too. */}
+            <span style={{ fontStyle: "italic", fontWeight: 400, color: "#ffd8a8" }}>
               Notes.
             </span>
           </div>
