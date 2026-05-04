@@ -26,10 +26,11 @@ export default function Home() {
       <section className="login-hero fade">
         <div className="kicker">— A private journal for the songs you&apos;re listening to</div>
         <h1>
-          My Song <em>Notes.</em>
+          My Song <em>Notes</em>
+          <span className="title-orb" aria-hidden />
         </h1>
         <p className="lede">
-          Log in with Spotify, play anything, and write alongside. Timestamps become clickable &mdash; everything auto&#8209;saves.
+          Legally I am not allowed to call this &ldquo;Spotify Notes&rdquo;.
         </p>
         <button className="login-button" onClick={() => spotifyLogin()}>
           <span className="spotify-mark">♪</span>

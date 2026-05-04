@@ -775,6 +775,27 @@ input, textarea {
   background-clip: text;
   color: transparent;
 }
+/*
+  The "period" after Notes is the brand orb. Sized in `em` so it tracks
+  the headline's clamp() font-size; positioned to sit where a real
+  italic-serif period would sit (slightly above baseline, near the
+  x-height bottom). Same gradient as the in-app theme-picker .brand .orb
+  so the static and clickable orbs read as one identity.
+*/
+.login-hero h1 .title-orb {
+  display: inline-block;
+  width: 0.42em;
+  height: 0.42em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--c1), var(--c2) 60%, var(--c3));
+  box-shadow: 0 0 0.5em var(--accent-shadow);
+  margin-left: 0.06em;
+  /* Negative vertical-align dips the orb below baseline so its CENTER
+     sits roughly where a period would be, instead of the orb's bottom
+     resting on baseline (which would float it too high, like a degree
+     sign). */
+  vertical-align: -0.05em;
+}
 .login-hero .lede {
   font-family: var(--font-display), serif;
   font-weight: 300;
