@@ -2,6 +2,11 @@
 
 A rich-text journal that follows whatever you're playing on Spotify. Live at [mysongnotes.vercel.app](https://mysongnotes.vercel.app). The Library view at `/home/library` turns every note you've ever written into a searchable gallery of album-art cards.
 
+<!-- Demo gif goes here once recorded. See screenshots/SHOTLIST.md for the capture script. -->
+<!-- ![demo](./screenshots/demo.gif) -->
+
+> **More:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) — how it's wired · [`ROADMAP.md`](./ROADMAP.md) — what's next · [`CHANGELOG.md`](./CHANGELOG.md) — what shipped · [`CONTRIBUTING.md`](./CONTRIBUTING.md) — how to help
+
 ## What it does
 
 - Sign in with Spotify and the app mirrors your current playback — track title, artists, album art, transport controls.

@@ -10,6 +10,7 @@
     "dev:local": "NODE_ENV=development env-cmd -f .env.development.local next dev"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "dompurify": "^3.2.3",
     "drizzle-orm": "^0.45.2",
     "next": "^16.2.4",
