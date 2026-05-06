@@ -340,6 +340,23 @@ input, textarea {
   background: rgba(255, 106, 77, 0.12);
   color: #ffaa96;
 }
+/* Offline-queue indicator: shown only when notes are pending IndexedDB
+   replay. Amber so it reads as "watch this," not "broken." */
+.chip.queued {
+  color: #ffd089;
+  border-color: rgba(255, 208, 137, 0.35);
+  background: rgba(255, 208, 137, 0.08);
+}
+.chip.queued::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffd089;
+  box-shadow: 0 0 8px #ffd089;
+  margin-right: 2px;
+}
 .chip:hover { background: var(--glass-hi); }
 
 /* =============================================================

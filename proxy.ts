@@ -19,7 +19,13 @@ export async function proxy(req: NextRequest) {
   if (!token) {
     const url = req.nextUrl.clone();
     url.pathname = "/";
-    url.searchParams.set("callbackUrl", req.nextUrl.pathname);
+    // Preserve the original querystring (notably ?play=<trackId> from the
+    // Web Share Target landing) so the round-trip through Spotify OAuth
+    // doesn't drop the user's intent on the floor.
+    const original =
+      req.nextUrl.pathname + (req.nextUrl.search ? req.nextUrl.search : "");
+    url.search = "";
+    url.searchParams.set("callbackUrl", original);
     return NextResponse.redirect(url);
   }
   return NextResponse.next();

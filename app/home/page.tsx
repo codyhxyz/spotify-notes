@@ -5,10 +5,13 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   AuthExpiredError,
+  drainQueue,
+  getPendingCount,
   getPlayback,
   getTrackMeta,
   pauseTrack,
   playTrack,
+  putNote,
   skipNext,
   skipPrevious,
   type Playback,
@@ -74,6 +77,9 @@ export default function Home() {
   const [awaitingPlay, setAwaitingPlay] = useState<boolean>(false);
   const [awaitingPrev, setAwaitingPrev] = useState<boolean>(false);
   const [awaitingNext, setAwaitingNext] = useState<boolean>(false);
+  // Pending offline writes: count of note PUTs that failed because we were
+  // offline and are now queued in IndexedDB. Surfaced as a chip in the topbar.
+  const [queuedCount, setQueuedCount] = useState<number>(0);
 
   // The contentEditable owns the live note DOM. We seed it once per
   // track-load via `noteSeed` (state, read during render) and mirror live
@@ -147,6 +153,95 @@ export default function Home() {
     }
   }
 
+  // Declared early because the offline-queue and share-target effects below
+  // reference it. (Originally lived next to pollPlayback; hoisted up so the
+  // dependency order matches the visual layout.)
+  const reauthOnExpired = useCallback(() => {
+    spotifyLogin("/home");
+  }, []);
+
+  // ---- Offline-write queue: drain on mount, online, and tab-visible ----
+  // Three triggers because each catches a different real-world flow:
+  //   - mount: leftover writes from a previous session (subway → home).
+  //   - "online" event: connection came back while the tab was foreground.
+  //   - visibilitychange: phone unlocked, tab refocused. The browser may
+  //     not fire "online" if the radio reattached while we were hidden.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let cancelled = false;
+    const refreshCount = async () => {
+      const n = await getPendingCount();
+      if (!cancelled) setQueuedCount(n);
+    };
+    const drain = async () => {
+      const r = await drainQueue();
+      if (cancelled) return;
+      setQueuedCount(r.remaining);
+      // If we drained anything for the current track, re-fetch its
+      // updated_at so further live edits don't 409 against our own writes.
+      if (r.drained > 0 && trackId) {
+        try {
+          const res = await fetch(
+            `/api/notes?track_id=${encodeURIComponent(trackId)}`
+          );
+          if (res.ok) {
+            const j = (await res.json()) as { updated_at?: string };
+            noteUpdatedAt.current = j.updated_at ?? noteUpdatedAt.current;
+          }
+        } catch {
+          // best-effort
+        }
+      }
+    };
+    refreshCount();
+    drain();
+    const onOnline = () => { drain(); };
+    const onVis = () => {
+      if (document.visibilityState === "visible") drain();
+    };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [status, trackId]);
+
+  // ---- Web Share Target landing handler ----
+  // /share parses the shared payload and redirects here as /home?play=ID.
+  // We start playback (best-effort; needs an active device) and strip the
+  // param so a refresh doesn't re-trigger.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const playId = url.searchParams.get("play");
+    if (!playId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await playTrack(playId);
+        if (!cancelled) setTrackId(playId);
+      } catch (err) {
+        if (err instanceof AuthExpiredError) reauthOnExpired();
+        else {
+          console.error("[home] share-target play failed:", err);
+          // Soft-fail: still load the note for the shared track even if
+          // playback couldn't start (no active device, etc.).
+          if (!cancelled) setTrackId(playId);
+        }
+      } finally {
+        url.searchParams.delete("play");
+        const cleaned = url.pathname + (url.search ? url.search : "");
+        window.history.replaceState({}, "", cleaned);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [status, reauthOnExpired]);
+
   // ---- Ambient backdrop ----
   useEffect(() => {
     if (meta?.image_url) {
@@ -175,10 +270,7 @@ export default function Home() {
   }, []);
 
   // ---- Polling: visibility-aware, paused-aware ----
-  const reauthOnExpired = useCallback(() => {
-    spotifyLogin("/home");
-  }, []);
-
+  // (reauthOnExpired is declared above the offline-queue effect.)
   const pollPlayback = useCallback(async () => {
     try {
       const pb: Playback = await getPlayback();
@@ -317,48 +409,50 @@ export default function Home() {
     }
   }
 
-  // ---- Save with optimistic concurrency ----
+  // ---- Save with optimistic concurrency + offline queue fallback ----
+  // putNote() handles the queue: a fetch-level failure (offline, dropped
+  // connection) is silently persisted to IndexedDB and replayed on reconnect.
+  // HTTP errors (4xx/5xx) are not queued — those are real problems, not
+  // network problems, and shouldn't loop forever.
   const saveNote = useCallback(
     async (tid: string, note: string) => {
       if (!meta) return; // wait for metadata so we can persist it alongside
-      try {
-        const res = await fetch("/api/notes", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            track_id: tid,
-            note,
-            expected_updated_at: noteUpdatedAt.current,
-            name: meta.name,
-            artists: meta.artists,
-            artist_urls: meta.artist_urls,
-            image_url: meta.image_url,
-            track_url: meta.track_url,
-            album_url: meta.album_url,
-          }),
-        });
-        if (res.status === 409) {
-          // Another tab/device wrote first. Refetch and let the user decide.
-          const j = (await res.json().catch(() => ({}))) as {
-            current_updated_at?: string;
-          };
-          noteUpdatedAt.current = j.current_updated_at ?? null;
-          alert(
-            "This note was edited in another tab. The newer version has been kept; refresh to see it."
-          );
-          return;
-        }
-        if (!res.ok) throw new Error(`save failed: ${res.status}`);
-        const ok = (await res.json()) as { updated_at?: string };
-        if (ok.updated_at) noteUpdatedAt.current = ok.updated_at;
-      } catch (err) {
-        console.error("[home] save note failed:", err);
-        alert(
-          "Error saving note! Please copy your note, save it somewhere else, and refresh."
-        );
+      const result = await putNote({
+        track_id: tid,
+        note,
+        expected_updated_at: noteUpdatedAt.current,
+        name: meta.name,
+        artists: meta.artists,
+        artist_urls: meta.artist_urls,
+        image_url: meta.image_url,
+        track_url: meta.track_url,
+        album_url: meta.album_url,
+      });
+      if (result.status === "ok") {
+        if (result.updated_at) noteUpdatedAt.current = result.updated_at;
+        return;
       }
+      if (result.status === "queued") {
+        setQueuedCount((c) => c + 1);
+        return;
+      }
+      if (result.status === "conflict") {
+        noteUpdatedAt.current = result.current_updated_at;
+        alert(
+          "This note was edited in another tab. The newer version has been kept; refresh to see it."
+        );
+        return;
+      }
+      if (result.status === "auth_expired") {
+        reauthOnExpired();
+        return;
+      }
+      console.error("[home] save note failed:", result);
+      alert(
+        "Error saving note! Please copy your note, save it somewhere else, and refresh."
+      );
     },
-    [meta]
+    [meta, reauthOnExpired]
   );
 
   const debouncedSave = useDebouncedCallback((tid: string, note: string) => {
@@ -487,6 +581,14 @@ export default function Home() {
             My&nbsp;<b><em>Song</em>&nbsp;Notes</b>
           </div>
           <div className="top-right">
+            {queuedCount > 0 && (
+              <span
+                className="chip queued"
+                title={`${queuedCount} unsynced note${queuedCount === 1 ? "" : "s"}. Will sync when you're back online.`}
+              >
+                Queued · {queuedCount}
+              </span>
+            )}
             {hasTrack && (
               <span className="chip live">
                 {isPlaying ? "Playing" : "Paused"}

@@ -13,6 +13,8 @@ A rich-text journal that follows whatever you're playing on Spotify. Live at [so
 - Write notes in a rich-text pane; changes auto-save to Postgres with a debounce, keyed by Spotify `trackId`.
 - Type a timestamp like `1:23` and it becomes a clickable chip that seeks Spotify to that position.
 - Browse every note you've written in the Library: full-text search across notes, songs, and artists; sort pills; a side drawer with play-in-Spotify and delete.
+- Write offline. Saves that fail because there's no network are queued in IndexedDB and replayed when the connection comes back; a "Queued · N" chip appears in the header while writes are pending.
+- Install as a PWA. The web manifest registers the app as a Web Share Target, so a Spotify track URL shared from the OS share sheet lands at `/share` and bounces straight into the editor for that track.
 - Export your notes as JSON, wipe everything, or log out from a shared settings modal.
 
 ## Why

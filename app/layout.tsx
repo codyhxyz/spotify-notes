@@ -44,6 +44,11 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
     apple: "/apple-icon.png",
   },
+  // PWA manifest. Enables home-screen install on iOS and Android, and
+  // registers /share as a Web Share Target so a Spotify URL shared from the
+  // OS share sheet (Android Chrome PWAs; partial iOS support since 16.4)
+  // lands inside the app instead of opening a fresh Safari tab.
+  manifest: "/manifest.webmanifest",
 };
 
 // Mobile address-bar tints to match the in-app rose theme, so the OS chrome
