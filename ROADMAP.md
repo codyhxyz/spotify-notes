@@ -17,6 +17,8 @@ Things I'd like to ship, roughly ordered by how much I want them. Nothing here i
 - **YouTube Music provider.** Same shape; the playback API is more painful than Apple's. Lower priority.
 - **Per-note timestamps as anchors.** Right now timestamp chips render below the editor; clicking one seeks the song. Better would be: each chip is rendered inline at the point in the note where it appeared, and acts as both a button and an anchor.
 - **Mobile transport controls in the lock-screen / Now Playing widget** via the Web Media Session API, so you can skip from your AirPods.
+- **Remix-chain graph from WhoSampled.** For any track, walk the sampled-by / samples / covered-by edges into a directed graph and render it. Fetch once and cache — WhoSampled has no public API and scraping is the slow part, so the storage layer matters more than the viz. Useful for "what did this song become" rabbit holes.
+- **A decent way to browse MusicBrainz.** The data is great, the interface is the problem. Build a focused reader over the MB dump (artist → release-group → release → recording, with relationships visible inline) that's actually pleasant to navigate. Scope creep is the obvious risk; start with one entity type done well.
 
 ## Long-term / "would be cool"
 
