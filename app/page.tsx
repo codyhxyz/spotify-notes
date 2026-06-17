@@ -76,14 +76,21 @@ export default function Home() {
           </div>
         </div>
         <h1>
-          My Song <em>Notes</em>
-          <button
-            type="button"
-            className="title-orb"
-            onClick={cycleTheme}
-            title={`Theme: ${THEME_LABELS[theme]} · click to change`}
-            aria-label={`Change theme (current: ${THEME_LABELS[theme]})`}
-          />
+          My Song{" "}
+          {/* word-lock glues the brand orb to "Notes" so they wrap as a
+              unit. The hero column is narrow (~1.2fr); without this the
+              headline wraps between <em>Notes</em> and the period-orb, leaving
+              the orb stranded on its own line. */}
+          <span className="word-lock">
+            <em>Notes</em>
+            <button
+              type="button"
+              className="title-orb"
+              onClick={cycleTheme}
+              title={`Theme: ${THEME_LABELS[theme]} · click to change`}
+              aria-label={`Change theme (current: ${THEME_LABELS[theme]})`}
+            />
+          </span>
         </h1>
         <button className="login-button" onClick={() => spotifyLogin()}>
           <span className="spotify-mark">♪</span>
@@ -115,7 +122,7 @@ export default function Home() {
         <p className="note">
           Full playback controls require <b>Spotify Premium</b>. Notes still save for free accounts.{" "}
           <a
-            href="https://raw.githubusercontent.com/codyhxyz/spotify-notes/master/PRIVACY_POLICY.md"
+            href="https://raw.githubusercontent.com/codyhxyz/spotify-notes/main/PRIVACY_POLICY.md"
             target="_blank"
             rel="noreferrer"
           >

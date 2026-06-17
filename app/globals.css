@@ -3,7 +3,7 @@
    Album art becomes the atmosphere. Glass panels float on top.
    ============================================================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Kalnia:wght@200;300;500;700&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Kalnia:ital,wght@0,200;0,300;0,500;0,700;1,300;1,500&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap");
 
 :root {
   --font-display: "Kalnia", Georgia, serif;
@@ -764,7 +764,13 @@ input, textarea {
   margin: 0 auto;
   padding: 60px 32px;
 }
-.login-hero { position: relative; }
+.login-hero { position: relative; min-width: 0; }
+/* min-width: 0 (the grid overflow fix) is load-bearing: the legal-ticker
+   marquee is width:max-content (~4400px), and grid items default to
+   min-width:auto, so without this the hero column would inflate to the
+   ticker's intrinsic width and shove the .login-panel off the right
+   edge of the viewport on regular (>=2-col) widths. */
+.login-panel { min-width: 0; }
 .login-hero .legal-ticker {
   position: relative;
   width: min(100%, 620px);
@@ -816,7 +822,15 @@ input, textarea {
 .login-hero h1 em {
   font-style: italic;
   font-weight: 500;
+  /* padding-right gives the italic 's' swash room: background-clip:text
+     only paints the gradient within the em's padding box, so the part of
+     the glyph that overhangs the content box (Kalnia italic 's' has a
+     right-side flourish ~0.05em) was rendering transparent — the cut-off
+     's'. The .title-orb margin-left is reduced by the same amount so the
+     orb's position is unchanged. */
+  padding-right: 0.12em;
   background: linear-gradient(90deg, var(--c1), var(--accent-hi) 50%, var(--c2));
+  background-origin: padding-box;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -830,6 +844,10 @@ input, textarea {
   flourish. Same gradient + hover behavior as .brand .orb so the
   static and clickable orbs read as one identity.
 */
+/* Keeps "Notes" + the period-orb on one line so the orb can never wrap
+   onto its own line when the headline breaks across the narrow hero column. */
+.login-hero h1 .word-lock { white-space: nowrap; }
+
 .login-hero h1 .title-orb {
   display: inline-block;
   width: 0.3em;
@@ -839,7 +857,7 @@ input, textarea {
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, var(--c1), var(--c2) 60%, var(--c3));
   box-shadow: 0 0 0.4em var(--accent-shadow);
-  margin-left: 0.18em;
+  margin-left: 0.06em;
   /* Negative vertical-align dips the orb below baseline so its CENTER
      sits roughly where a period would be. */
   vertical-align: -0.02em;

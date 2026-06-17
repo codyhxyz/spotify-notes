@@ -28,7 +28,7 @@ export default function EulaModal({ open, onAccept, onDecline }: Props) {
         <p style={{ marginTop: 12 }}>
           Read the full text:{" "}
           <a
-            href="https://github.com/codyhxyz/spotify-notes/blob/master/EULA.md"
+            href="https://github.com/codyhxyz/spotify-notes/blob/main/EULA.md"
             target="_blank"
             rel="noreferrer"
           >
@@ -36,7 +36,7 @@ export default function EulaModal({ open, onAccept, onDecline }: Props) {
           </a>{" "}
           ·{" "}
           <a
-            href="https://github.com/codyhxyz/spotify-notes/blob/master/PRIVACY_POLICY.md"
+            href="https://github.com/codyhxyz/spotify-notes/blob/main/PRIVACY_POLICY.md"
             target="_blank"
             rel="noreferrer"
           >

@@ -578,7 +578,12 @@ export default function Home() {
               title={`Theme: ${THEME_LABELS[theme]} · click to change`}
               aria-label={`Change theme (current: ${THEME_LABELS[theme]})`}
             />
-            My&nbsp;<b><em>Song</em>&nbsp;Notes</b>
+            {/* Text wrapped in a single span so it is ONE flex item next to the
+                orb. Without this, flex splits the bare text node "My\u00a0" and
+                the <b> into two flex items and inserts the 12px row gap between
+                "My" and "Song Notes" (but not between "Song" and "Notes"),
+                producing badly uneven kerning. */}
+            <span>My&nbsp;<b><em>Song</em>&nbsp;Notes</b></span>
           </div>
           <div className="top-right">
             {queuedCount > 0 && (
