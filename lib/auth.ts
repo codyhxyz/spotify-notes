@@ -10,13 +10,18 @@ import { db, schema } from "@/lib/db";
 //   POST   /v1/me/player/previous  -> user-modify-playback-state
 //   POST   /v1/me/player/next      -> user-modify-playback-state
 //   GET    /v1/tracks/{id}         -> (no scope, public catalog)
-//   GET    /v1/me                  -> user-read-email, user-read-private
+//   GET    /v1/me                  -> user-read-email
 //                                     (we hit /me implicitly via Spotify
 //                                     OAuth profile to obtain the canonical
 //                                     Spotify user id used as our DB user_id)
+//
+// `user-read-private` is intentionally NOT requested. Spotify's docs list it
+// as required for GET /v1/me, but in practice the fields we actually read
+// (id, display_name, images) are returned under user-read-email alone.
+// Omitting it keeps the scope set minimal and avoids a dashboard-scopes
+// mismatch that produced `invalid_scope` on the OAuth callback (2026-06-17).
 const SPOTIFY_SCOPES = [
   "user-read-email",
-  "user-read-private",
   "user-read-playback-state",
   "user-modify-playback-state",
 ].join(" ");
@@ -54,6 +59,19 @@ async function refreshSpotifyAccessToken(refreshToken: string) {
   };
 }
 
+function sanitizeOAuthDebugMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return null;
+  const input = metadata as Record<string, unknown>;
+  const output: Record<string, string> = {};
+  for (const key of ["providerId", "error", "error_description", "error_uri"]) {
+    const value = input[key];
+    if (typeof value === "string") {
+      output[key] = value.length > 500 ? `${value.slice(0, 500)}…` : value;
+    }
+  }
+  return Object.keys(output).length ? output : null;
+}
+
 // Auth.js v5: NextAuth() returns the four primitives below. `auth()` is the
 // universal server-side session reader (replaces v4's getServerSession).
 // `handlers` plugs into the App Router catchall route.
@@ -66,17 +84,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // Vercel auto-detects this, but being explicit keeps non-Vercel hosts
   // (preview branches on custom domains, self-host) working without surprise.
   trustHost: true,
+  logger: {
+    // Auth.js intentionally hides OAuth provider callback params when `debug`
+    // is off. Keep debug off in prod (it can include secrets/tokens in other
+    // messages) but preserve Spotify's own error string for incident response.
+    debug(message, metadata) {
+      if (message === "OAuthCallbackError") {
+        const safe = sanitizeOAuthDebugMetadata(metadata);
+        if (safe?.providerId === "spotify") {
+          console.error("[auth][spotify-oauth-provider-error]", safe);
+        }
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[auth][debug]", message, JSON.stringify(metadata, null, 2));
+      }
+    },
+  },
   providers: [
     Spotify({
       clientId: process.env.SPOTIFY_CLIENT_ID,
       clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
       authorization: {
-        // Locale-prefixed URL (`/en/authorize`) bypasses the Spotify iOS app's
-        // universal-link interception of `/authorize`. Without this, mobile
-        // Safari hands the OAuth flow to the installed Spotify app, which
-        // returns `invalid_scope` for our playback scope set. Desktop is
-        // unaffected. Same endpoint server-side.
-        url: "https://accounts.spotify.com/en/authorize",
+        // Use Spotify's canonical OAuth endpoint. We previously pinned the
+        // locale-prefixed `/en/authorize` to dodge an iOS universal-link bug,
+        // but Spotify's current AASA no longer claims `/authorize`, and the
+        // locale route started returning `invalid_scope` for the valid playback
+        // scope set on desktop Chrome (2026-06-17 prod logs).
+        url: "https://accounts.spotify.com/authorize",
         params: { scope: SPOTIFY_SCOPES },
       },
     }),

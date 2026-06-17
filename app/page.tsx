@@ -12,10 +12,23 @@ import {
   saveTheme,
 } from "../util/theme";
 
+const legalTickerText = "Legally I am not allowed to call this “Spotify Notes”.";
+
+function LegalTickerGroup() {
+  return (
+    <div className="legal-ticker__group">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <span key={index}>{legalTickerText}</span>
+      ))}
+    </div>
+  );
+}
+
 export default function Home() {
   const { status } = useSession();
   const router = useRouter();
   const [theme, setTheme] = useState<Theme>("rose");
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") router.replace("/home");
@@ -25,6 +38,16 @@ export default function Home() {
   // Providers.tsx already calls applyTheme on mount; this is just for UI.
   useEffect(() => {
     setTheme(loadTheme());
+  }, []);
+
+  useEffect(() => {
+    const error = new URLSearchParams(window.location.search).get("error");
+    if (!error) return;
+    setAuthError(
+      error === "OAuthCallbackError"
+        ? "Spotify sign-in failed before it returned an auth code. Try once more; if it repeats, the exact Spotify callback error is now in production logs."
+        : `Sign-in failed (${error}). Try once more.`
+    );
   }, []);
 
   function cycleTheme() {
@@ -46,7 +69,12 @@ export default function Home() {
   return (
     <main className="login-shell">
       <section className="login-hero fade">
-        <div className="kicker">— A private journal for the songs you&apos;re listening to</div>
+        <div className="legal-ticker" aria-label={legalTickerText}>
+          <div className="legal-ticker__track" aria-hidden="true">
+            <LegalTickerGroup />
+            <LegalTickerGroup />
+          </div>
+        </div>
         <h1>
           My Song <em>Notes</em>
           <button
@@ -57,13 +85,15 @@ export default function Home() {
             aria-label={`Change theme (current: ${THEME_LABELS[theme]})`}
           />
         </h1>
-        <p className="lede">
-          Legally I am not allowed to call this &ldquo;Spotify Notes&rdquo;.
-        </p>
         <button className="login-button" onClick={() => spotifyLogin()}>
           <span className="spotify-mark">♪</span>
           Continue with Spotify
         </button>
+        {authError ? (
+          <p className="login-error" role="alert">
+            {authError}
+          </p>
+        ) : null}
       </section>
 
       <aside className="login-panel fade d2">
@@ -96,7 +126,7 @@ export default function Home() {
 
       <div className="login-footer fade d3">
         <a href="https://github.com/codyhxyz/spotify-notes" target="_blank" rel="noreferrer">source code</a>
-        <a href="https://codyh.xyz" target="_blank" rel="noreferrer">built by codyh</a>
+        <a href="https://codyh.xyz" target="_blank" rel="noreferrer">home-grown by codyh</a>
       </div>
     </main>
   );

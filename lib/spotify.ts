@@ -24,7 +24,15 @@ export async function getSpotifyToken(
   // decryption transparently using the same secret as the NextAuth() factory.
   // The default salt is the cookie name (authjs.session-token in v5),
   // matching what NextAuth() encoded with — so we don't override either.
-  const token = await getToken({ req, secret: AUTH_SECRET });
+  //
+  // `secureCookie` must match how the NextAuth() route handler set the
+  // session cookie: it prefixes with `__Secure-` on HTTPS and doesn't on
+  // HTTP. getToken does NOT auto-detect this — without the flag it only ever
+  // looks for the unprefixed `authjs.session-token`, never finds the
+  // `__Secure-` cookie set in prod, and returns null (401 on every /api/spotify
+  // route). Derive from the request protocol so both envs match.
+  const secureCookie = req.nextUrl.protocol === "https:";
+  const token = await getToken({ req, secret: AUTH_SECRET, secureCookie });
   if (!token?.accessToken) return null;
   return {
     accessToken: token.accessToken as string,

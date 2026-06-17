@@ -25,10 +25,12 @@ Single Next.js 16 App Router app deployed to Vercel, backed by Neon Postgres via
 
 `lib/auth.ts` configures Auth.js v5 with the Spotify provider.
 
-- **Scopes**: `user-read-email`, `user-read-private`, `user-read-playback-state`, `user-modify-playback-state`. Derived from the actual API endpoints we hit; nothing is requested speculatively.
+- **Scopes**: `user-read-email`, `user-read-playback-state`, `user-modify-playback-state`. Derived from the actual API endpoints we hit; nothing is requested speculatively. (`user-read-private` is intentionally omitted — Spotify's docs list it as required for `GET /v1/me`, but the fields we read (`id`, `display_name`, `images`) are returned under `user-read-email` alone, and requesting an undeclared dashboard scope triggers `invalid_scope` on the OAuth callback.)
 - **Session strategy**: JWT (no DB session table). The token carries the Spotify access token, refresh token, and expiry.
 - **Refresh-token rotation**: the `jwt` callback checks expiry on every read; if within 60s of expiry, it calls Spotify's `/api/token` endpoint with the refresh token and rewrites the JWT in place. If refresh fails, the session is tagged with `error: "RefreshAccessTokenError"` so the client can punt the user back to sign-in.
-- **iOS universal-link dodge**: Spotify's iOS app registers itself as a universal link handler for `accounts.spotify.com/authorize`, and when it intercepts the OAuth flow on mobile Safari it returns `invalid_scope` for our scope set. Pinning the locale-prefixed URL `accounts.spotify.com/en/authorize` bypasses the intercept. Same endpoint server-side; this is a string-level workaround for an Apple-platform routing quirk.
+- **Authorization endpoint**: use Spotify's canonical `accounts.spotify.com/authorize`. The app previously pinned `accounts.spotify.com/en/authorize` to dodge an iOS universal-link bug, but Spotify's current AASA no longer claims `/authorize`, and 2026-06-17 production logs showed the locale route returning `invalid_scope` for the valid playback scope set on desktop Chrome.
+- **Production Spotify app status**: the live Spotify app is in production mode. Do not diagnose `songnotes.codyh.xyz` OAuth failures as Spotify development-mode allowlist/test-user/quota-extension problems.
+- **OAuth diagnostics**: broad Auth.js debug logging stays off in production because it can include provider secrets/tokens. Instead, `app/api/auth/[...nextauth]/route.ts` logs sanitized callback failures as `[spotify-oauth-callback-error]` (Spotify returned `error`/`error_description`) or `[spotify-oauth-callback-missing-pkce-cookie]` (code present but PKCE verifier cookie absent). `lib/auth.ts` also preserves sanitized Spotify `OAuthCallbackError` metadata as `[auth][spotify-oauth-provider-error]`.
 - **First sign-in**: an `events.signIn` hook upserts a row into the `users` table keyed by the Spotify user id (`ON CONFLICT DO NOTHING` so we don't clobber an existing `accepted_eula` value).
 
 ## Spotify proxy
@@ -148,13 +150,14 @@ util/
 migrations/
   001_initial.sql          users + notes tables
   002_track_metadata.sql   denormalized metadata columns on notes
-middleware.ts              gates /home/* on a NextAuth session
+proxy.ts                  gates /home/* on a NextAuth session (Next 16 renamed `middleware` → `proxy`)
 ```
 
 ## Things that look weird and aren't
 
 - **`app/page.tsx` is a `"use client"`.** It needs `useSession()` to redirect signed-in users to `/home`. Could be a server component with a session read, but the client redirect is one less round-trip and `useSession` is already in the bundle for the rest of the app.
 - **No CSRF middleware.** Auth.js v5 handles CSRF for the auth endpoints. The `notes` and `spotify` routes are gated by `auth()`; an attacker without a valid session JWT can't reach them. There's no public mutation surface.
+- **`getToken({ secureCookie })` in `proxy.ts` and `lib/spotify.ts`.** Auth.js' route handler prefixes the session cookie with `__Secure-` on HTTPS and omits the prefix on HTTP. `getToken` does **not** auto-detect this — without `secureCookie` it only ever reads the unprefixed `authjs.session-token`, never finds the `__Secure-` cookie set in production, and returns `null`. Both call sites derive it from `req.nextUrl.protocol === "https:"` so they match whatever the handler set. (`lib/session.ts`'s `auth()` auto-detects the cookie name itself, so it doesn't need this.)
 - **The `users.user_id` is a `text` column, not a UUID.** It stores Spotify's user id directly so the join from the JWT (which carries the Spotify id) is zero-translation. UUIDs would mean a lookup hop.
 
 ## Things that are weird and are

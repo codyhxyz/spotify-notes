@@ -15,7 +15,14 @@ import { getToken } from "next-auth/jwt";
 const AUTH_SECRET = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 
 export async function proxy(req: NextRequest) {
-  const token = await getToken({ req, secret: AUTH_SECRET });
+  // Auth.js' route handler prefixes cookies with `__Secure-` when the request
+  // is HTTPS (production / Vercel previews), and omits the prefix for HTTP
+  // (local dev). `getToken` does NOT auto-detect this — without `secureCookie`
+  // it always looks for the unprefixed `authjs.session-token`, never finds the
+  // `__Secure-` cookie set in prod, and returns null — booting freshly-signed-in
+  // users back to "/". Derive it from the request protocol so both envs match.
+  const secureCookie = req.nextUrl.protocol === "https:";
+  const token = await getToken({ req, secret: AUTH_SECRET, secureCookie });
   if (!token) {
     const url = req.nextUrl.clone();
     url.pathname = "/";
