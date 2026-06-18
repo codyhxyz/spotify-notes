@@ -69,12 +69,6 @@ export default function Home() {
   return (
     <main className="login-shell">
       <section className="login-hero fade">
-        <div className="legal-ticker" aria-label={legalTickerText}>
-          <div className="legal-ticker__track" aria-hidden="true">
-            <LegalTickerGroup />
-            <LegalTickerGroup />
-          </div>
-        </div>
         <h1>
           My Song{" "}
           {/* word-lock glues the brand orb to "Notes" so they wrap as a
@@ -134,6 +128,15 @@ export default function Home() {
       <div className="login-footer fade d3">
         <a href="https://github.com/codyhxyz/spotify-notes" target="_blank" rel="noreferrer">source code</a>
         <a href="https://codyh.xyz" target="_blank" rel="noreferrer">home-grown by codyh</a>
+      </div>
+
+      {/* Full-bleed ticker tape pinned to the bottom of the viewport.
+          Sits out-of-flow (fixed) so the centered hero grid is unaffected. */}
+      <div className="legal-ticker fade d4" aria-label={legalTickerText}>
+        <div className="legal-ticker__track" aria-hidden="true">
+          <LegalTickerGroup />
+          <LegalTickerGroup />
+        </div>
       </div>
     </main>
   );

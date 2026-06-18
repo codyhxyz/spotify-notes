@@ -4,6 +4,7 @@ Things I'd like to ship, roughly ordered by how much I want them. Nothing here i
 
 ## Near-term
 
+- **Replace the song icon next to "Continue with Spotify" with the official Spotify logo.** Spotify wants us to use their trademark iconography to identify their IP. Pull the official Spotify brand mark and tint/merge it in line with our colors as much as their brand guidelines allow.
 - **Toasts instead of `alert()`** for save conflicts and playback errors. The current modal-blocking alerts feel 2009.
 - **Tags / playlists.** Free-form tags on notes (`#warmup`, `#chord-study`, `#open-set`) and a Library filter chip per tag. The hard part isn't the schema, it's the input affordance — autocomplete from existing tags without becoming a full taxonomy editor.
 - **Share a single note** by URL. Read-only public link, opt-in. Album art + your note, nothing else; no profile, no follower graph. The point is to send someone a link, not to be a social network.
