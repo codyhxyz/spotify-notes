@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { spotifyLogin } from "../util/authutils";
 import {
   Theme,
@@ -87,7 +88,18 @@ export default function Home() {
           </span>
         </h1>
         <button className="login-button" onClick={() => spotifyLogin()}>
-          <span className="spotify-mark">♪</span>
+          {/* Official Spotify brand mark (monochrome white) so we identify
+              Spotify's IP per their trademark guidelines. White-on-color is
+              an allowed treatment; the wave cutouts let our gradient show
+              through, merging the mark with our palette. */}
+          <Image
+            className="spotify-mark"
+            src="/Spotify_Icon_RGB_White.png"
+            alt=""
+            width={24}
+            height={24}
+            aria-hidden="true"
+          />
           Continue with Spotify
         </button>
         {authError ? (

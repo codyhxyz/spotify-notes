@@ -901,14 +901,13 @@ input, textarea {
   box-shadow: 0 28px 70px var(--accent-shadow);
 }
 .login-button .spotify-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent-ink);
-  color: var(--c1);
-  display: grid;
-  place-items: center;
-  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: block;
+  /* The official white Spotify disc has transparent wave cutouts; the
+     button gradient shows through, so no tint/background is applied
+     (recoloring the mark would violate Spotify's brand guidelines). */
 }
 .login-error {
   max-width: 560px;

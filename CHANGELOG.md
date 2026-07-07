@@ -4,6 +4,8 @@ All notable user-facing changes. Format loosely follows [Keep a Changelog](https
 
 ## Unreleased
 
+- **Official Spotify logo on the sign-in button.** Replaced the musical-note glyph next to "Continue with Spotify" with the official Spotify brand mark (monochrome white). White-on-color is an allowed Spotify trademark treatment; the icon's wave cutouts let our gradient show through so the mark still reads as part of the color bath.
+
 - Public launch materials: dynamic OG image, Twitter card, MARKETING / ARCHITECTURE / ROADMAP / CONTRIBUTING docs.
 
 ## 2025-Q4 — Next 16 / Auth.js v5 / Library
