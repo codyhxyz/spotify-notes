@@ -19,11 +19,12 @@ type ListResponse = {
   next_cursor: string | null;
 };
 
+// Inert parse, not a detached div fed via innerHTML — notes hold raw pasted
+// markup, and a DOMParser document won't load resources or run handlers.
 function stripHTML(html: string): string {
   if (typeof window === "undefined") return html.replace(/<[^>]+>/g, " ");
-  const d = document.createElement("div");
-  d.innerHTML = html;
-  return d.textContent ?? "";
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body.textContent ?? "";
 }
 
 // Walk the cursor on /api/notes/list to get every note, page by page.

@@ -41,11 +41,14 @@ const SORT_LABELS: Record<SortKey, string> = {
   artist: "Artist A–Z",
 };
 
+// Notes are stored as the raw innerHTML the editor produced, so a note can
+// contain anything the user ever pasted in. Parse with DOMParser rather than
+// assigning to a div's innerHTML: DOMParser documents are inert, so an image
+// error handler smuggled in via paste can't fire while we read out text.
 function stripHTML(html: string): string {
   if (typeof window === "undefined") return html.replace(/<[^>]+>/g, " ");
-  const d = document.createElement("div");
-  d.innerHTML = html;
-  return d.textContent ?? "";
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body.textContent ?? "";
 }
 
 function escapeRegex(s: string): string {

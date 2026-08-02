@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -459,6 +459,11 @@ export default function Home() {
     saveNote(tid, note);
   }, 500);
 
+  // use-debounce cancels anything still pending when the component unmounts,
+  // so hitting Library within 500ms of a keystroke silently dropped that edit.
+  // Flush the tail write on the way out instead.
+  useEffect(() => () => debouncedSave.flush(), [debouncedSave]);
+
   const setTypingFalseDebounced = useDebouncedCallback(() => {
     userIsTyping.current = false;
   }, 500);
@@ -480,6 +485,19 @@ export default function Home() {
     setTimestampsDebounced(note);
     if (trackId) debouncedSave(trackId, note);
   }
+
+  // React 19 diffs dangerouslySetInnerHTML by object identity, not by the
+  // __html string, so a fresh literal rewrites innerHTML on every render —
+  // every 250ms while a track plays — wiping whatever the user just typed.
+  // A stable object lets the editor own its DOM until the seed truly changes.
+  // The window check is for prerender: unlike the JSX branches that call
+  // DOMPurify, this runs server-side, where the export has no .sanitize.
+  const noteSeedHtml = useMemo(
+    () => ({
+      __html: typeof window === "undefined" ? "" : DOMPurify.sanitize(noteSeed),
+    }),
+    [noteSeed]
+  );
 
   // ---- Transport ----
   async function handlePlay() {
@@ -755,9 +773,7 @@ export default function Home() {
                 onInput={(e) =>
                   handleNoteInput((e.currentTarget as HTMLDivElement).innerHTML)
                 }
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(noteSeed),
-                }}
+                dangerouslySetInnerHTML={noteSeedHtml}
               />
             </section>
           </>
