@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Spotify from "next-auth/providers/spotify";
-import { db, schema } from "@/lib/db";
+import { provisionSpotifyAccount } from "@/lib/spotify";
 
 // Spotify scopes — derived from the actual API endpoints the app hits:
 //   GET    /v1/me/player           -> user-read-playback-state
@@ -25,39 +25,6 @@ const SPOTIFY_SCOPES = [
   "user-read-playback-state",
   "user-modify-playback-state",
 ].join(" ");
-
-// Refresh an expired Spotify access token using the refresh token.
-async function refreshSpotifyAccessToken(refreshToken: string) {
-  const basic = Buffer.from(
-    `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
-  ).toString("base64");
-
-  const res = await fetch("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-    }),
-    cache: "no-store",
-  });
-
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(
-      `Failed to refresh Spotify token: ${res.status} ${JSON.stringify(json)}`
-    );
-  }
-  return {
-    accessToken: json.access_token as string,
-    // Spotify may or may not rotate the refresh token; fall back to the old one.
-    refreshToken: (json.refresh_token as string | undefined) ?? refreshToken,
-    expiresAt: Math.floor(Date.now() / 1000) + (json.expires_in as number),
-  };
-}
 
 function sanitizeOAuthDebugMetadata(metadata: unknown) {
   if (!metadata || typeof metadata !== "object") return null;
@@ -118,68 +85,49 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, account, profile }) {
-      // Initial sign-in: persist Spotify access/refresh tokens + user id.
-      if (account && profile) {
-        return {
-          ...token,
-          spotifyUserId: (profile as { id?: string }).id,
-          accessToken: account.access_token,
-          refreshToken: account.refresh_token,
-          expiresAt: account.expires_at,
-        };
-      }
+      // Initial sign-in is the only moment this callback has anything to do.
+      // The session cookie carries identity and nothing else — the Spotify
+      // access/refresh tokens go to Postgres, where lib/spotify.ts can
+      // refresh them at the point of use. Keeping them in the cookie meant
+      // only Auth.js could refresh them, which it did far too rarely.
+      if (!account || !profile) return token;
 
-      // Subsequent calls: return cached token if still valid.
-      const expiresAt = (token as { expiresAt?: number }).expiresAt;
-      if (expiresAt && Date.now() / 1000 < expiresAt - 60) {
+      const spotifyUserId = (profile as { id?: string }).id;
+      const accessToken = account.access_token;
+      const refreshToken = account.refresh_token;
+      const expiresAt = account.expires_at;
+      if (!spotifyUserId || !accessToken || !refreshToken || !expiresAt) {
+        console.error("[auth] incomplete Spotify grant", {
+          has_user_id: !!spotifyUserId,
+          has_access_token: !!accessToken,
+          has_refresh_token: !!refreshToken,
+          has_expires_at: !!expiresAt,
+        });
         return token;
       }
 
-      // Token expired — refresh.
-      const refreshToken = (token as { refreshToken?: string }).refreshToken;
-      if (!refreshToken) return token;
-      try {
-        const refreshed = await refreshSpotifyAccessToken(refreshToken);
-        return {
-          ...token,
-          accessToken: refreshed.accessToken,
-          refreshToken: refreshed.refreshToken,
-          expiresAt: refreshed.expiresAt,
-          error: undefined,
-        };
-      } catch (err) {
-        console.error("[auth] token refresh failed:", err);
-        return { ...token, error: "RefreshAccessTokenError" };
-      }
+      // Provisioning creates the users row before the spotify_accounts row so
+      // the foreign key holds. If it throws, we deliberately do NOT stamp
+      // spotifyUserId onto the token: a session pointing at tokens that were
+      // never written would 401 on every request with no way out. Failing the
+      // sign-in sends the user back to "/" to try again.
+      await provisionSpotifyAccount(spotifyUserId, {
+        accessToken,
+        refreshToken,
+        expiresAt,
+      });
+
+      return { ...token, spotifyUserId };
     },
     async session({ session, token }) {
-      const t = token as { spotifyUserId?: string; error?: string };
-      // Expose only the canonical Spotify user id and any auth error to the
-      // client. The Spotify access token stays server-side; clients hit our
-      // own /api/spotify/* proxy which reads the token from the JWT cookie.
+      // Expose only the canonical Spotify user id. Tokens never reach the
+      // client; the browser hits our own /api/spotify/* proxy, which reads
+      // them from the database.
+      const spotifyUserId = (token as { spotifyUserId?: string }).spotifyUserId;
       if (session.user) {
-        (session.user as { id?: string }).id = t.spotifyUserId;
+        (session.user as { id?: string }).id = spotifyUserId;
       }
-      if (t.error) (session as { error?: string }).error = t.error;
       return session;
-    },
-  },
-  events: {
-    // First sign-in: ensure a row exists in the existing `users` table keyed
-    // by the Spotify user id. Idempotent via ON CONFLICT DO NOTHING so we
-    // don't clobber an existing accepted_eula value.
-    async signIn({ profile }) {
-      const spotifyUserId = (profile as { id?: string } | undefined)?.id;
-      if (!spotifyUserId) return;
-      try {
-        await db
-          .insert(schema.users)
-          .values({ userId: spotifyUserId, acceptedEula: false })
-          .onConflictDoNothing({ target: schema.users.userId });
-      } catch (err) {
-        // Don't block sign-in if the DB write fails; log so we can debug.
-        console.error("[auth] failed to upsert user row:", err);
-      }
     },
   },
   pages: {

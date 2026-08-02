@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSpotifyToken, pickFallbackDeviceId, spotifyFetch } from "@/lib/spotify";
+import {
+  getSpotifyClient,
+  pickFallbackDeviceId,
+  spotifyErrorResponse,
+} from "@/lib/spotify";
 import { assertSameOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
@@ -11,13 +15,8 @@ export async function PUT(req: NextRequest) {
   const originErr = assertSameOrigin(req);
   if (originErr) return originErr;
 
-  const tok = await getSpotifyToken(req);
-  if (!tok) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  if (tok.error === "RefreshAccessTokenError") {
-    return NextResponse.json({ error: "auth_expired" }, { status: 401 });
-  }
+  const auth = await getSpotifyClient(req);
+  if (!auth.ok) return auth.response;
 
   const body = (await req.json().catch(() => ({}))) as {
     track_id?: string;
@@ -33,14 +32,14 @@ export async function PUT(req: NextRequest) {
     uris: [`spotify:track:${body.track_id}`],
     position_ms: body.position_ms ?? 0,
   };
-  let r = await spotifyFetch(tok.accessToken, "/me/player/play", {
+  let r = await auth.client.fetch("/me/player/play", {
     method: "PUT",
     body: playload,
   });
   if (!r.ok && (r.status === 404 || r.status === 403)) {
-    const deviceId = await pickFallbackDeviceId(tok.accessToken);
+    const deviceId = await pickFallbackDeviceId(auth.client);
     if (deviceId) {
-      r = await spotifyFetch(tok.accessToken, "/me/player/play", {
+      r = await auth.client.fetch("/me/player/play", {
         method: "PUT",
         body: playload,
         query: { device_id: deviceId },
@@ -48,11 +47,6 @@ export async function PUT(req: NextRequest) {
     }
   }
 
-  if (!r.ok) {
-    return NextResponse.json(
-      { error: "spotify_error", detail: r.data },
-      { status: r.status }
-    );
-  }
+  if (!r.ok) return spotifyErrorResponse(r);
   return NextResponse.json({ ok: true });
 }

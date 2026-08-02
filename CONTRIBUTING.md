@@ -17,6 +17,7 @@ npm install
 cp .env.example .env.local   # fill in Spotify + Postgres + NextAuth values
 psql "$DATABASE_URL" -f migrations/001_initial.sql
 psql "$DATABASE_URL" -f migrations/002_track_metadata.sql
+psql "$DATABASE_URL" -f migrations/003_spotify_accounts.sql
 npm run dev
 ```
 

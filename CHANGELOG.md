@@ -4,6 +4,8 @@ All notable user-facing changes. Format loosely follows [Keep a Changelog](https
 
 ## Unreleased
 
+- **Staying signed in actually works.** The app used to drop you back at the Spotify login roughly an hour after signing in. The OAuth tokens lived in the session cookie, and the only code that refreshed them ran when Auth.js handled a request — not when the app's own `/api/spotify/*` routes read the token. Once Spotify's hour-long access token lapsed, every call came back 401 and the app read that as "logged out." Tokens now live in Postgres and refresh at the moment they're used, so a session lasts until you revoke it. A Spotify outage no longer bounces you through a sign-in either — that comes back as a retryable error instead.
+
 - **Official Spotify logo on the sign-in button.** Replaced the musical-note glyph next to "Continue with Spotify" with the official Spotify brand mark (monochrome white). White-on-color is an allowed Spotify trademark treatment; the icon's wave cutouts let our gradient show through so the mark still reads as part of the color bath.
 
 - Public launch materials: dynamic OG image, Twitter card, MARKETING / ARCHITECTURE / ROADMAP / CONTRIBUTING docs.

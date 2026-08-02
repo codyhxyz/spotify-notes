@@ -1,28 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSpotifyToken, spotifyFetch } from "@/lib/spotify";
+import { getSpotifyClient, spotifyErrorResponse } from "@/lib/spotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // GET /api/spotify/playback
-// Returns { playing, progressMs, durationMs, trackId, hasActiveDevice } or
-// { error: "auth_expired" } when the underlying refresh has failed.
+// Returns { playing, progressMs, durationMs, trackId, hasActiveDevice }.
 export async function GET(req: NextRequest) {
-  const tok = await getSpotifyToken(req);
-  if (!tok) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  if (tok.error === "RefreshAccessTokenError") {
-    return NextResponse.json({ error: "auth_expired" }, { status: 401 });
-  }
+  const auth = await getSpotifyClient(req);
+  if (!auth.ok) return auth.response;
 
-  const r = await spotifyFetch(tok.accessToken, "/me/player");
-  if (!r.ok) {
-    if (r.status === 401) {
-      return NextResponse.json({ error: "auth_expired" }, { status: 401 });
-    }
-    return NextResponse.json({ error: "spotify_error" }, { status: r.status });
-  }
+  const r = await auth.client.fetch("/me/player");
+  if (!r.ok) return spotifyErrorResponse(r);
+
   if (r.status === 204 || !r.data) {
     return NextResponse.json({
       playing: false,

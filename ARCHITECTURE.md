@@ -139,9 +139,9 @@ app/
   opengraph-image.tsx      dynamic OG image (1200x630, edge runtime)
   twitter-image.tsx        re-exports OG image for Twitter cards
 lib/
-  auth.ts                  Auth.js config + Spotify token refresh
+  auth.ts                  Auth.js config; stores the Spotify grant at sign-in
   db.ts, db/schema.ts      Drizzle client + schema
-  spotify.ts               server-side Spotify Web API helpers
+  spotify.ts               server-side Spotify Web API client + token refresh
 util/
   apiutils.ts              client-side fetch wrappers (raise AuthExpiredError on 401)
   miscutils.ts             timestamp regex + parser
@@ -150,6 +150,7 @@ util/
 migrations/
   001_initial.sql          users + notes tables
   002_track_metadata.sql   denormalized metadata columns on notes
+  003_spotify_accounts.sql Spotify OAuth tokens, moved out of the session cookie
 proxy.ts                  gates /home/* on a NextAuth session (Next 16 renamed `middleware` → `proxy`)
 ```
 

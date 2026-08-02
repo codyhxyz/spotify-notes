@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSpotifyToken, spotifyFetch } from "@/lib/spotify";
+import { getSpotifyClient, spotifyErrorResponse } from "@/lib/spotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,21 +20,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const tok = await getSpotifyToken(req);
-  if (!tok) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  if (tok.error === "RefreshAccessTokenError") {
-    return NextResponse.json({ error: "auth_expired" }, { status: 401 });
-  }
+  const auth = await getSpotifyClient(req);
+  if (!auth.ok) return auth.response;
 
-  const r = await spotifyFetch(tok.accessToken, `/tracks/${encodeURIComponent(id)}`);
-  if (!r.ok) {
-    if (r.status === 401) {
-      return NextResponse.json({ error: "auth_expired" }, { status: 401 });
-    }
-    return NextResponse.json({ error: "spotify_error" }, { status: r.status });
-  }
+  const r = await auth.client.fetch(`/tracks/${encodeURIComponent(id)}`);
+  if (!r.ok) return spotifyErrorResponse(r);
+
   const t = r.data as Track;
   return NextResponse.json({
     track_id: id,

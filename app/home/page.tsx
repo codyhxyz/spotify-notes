@@ -61,7 +61,7 @@ type NoteRecord = {
 };
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [acceptedEULA, setAcceptedEULA] = useState<boolean | null>(null);
   const [eulaPromptOpen, setEulaPromptOpen] = useState<boolean>(false);
@@ -92,8 +92,6 @@ export default function Home() {
   const noteUpdatedAt = useRef<string | null>(null);
   const userIsTyping = useRef<boolean>(false);
 
-  const sessionError = (session as { error?: string } | null)?.error;
-
   // ---- Theme bootstrap ----
   useEffect(() => {
     const t = loadTheme();
@@ -107,16 +105,6 @@ export default function Home() {
     applyTheme(t);
     saveTheme(t);
   }
-
-  // ---- Auth-error escape hatch ----
-  // If the JWT can't refresh anymore (user revoked us, refresh-token
-  // rotation expired, etc.) NextAuth surfaces { error: "RefreshAccessTokenError" }.
-  // Bounce them to a fresh sign-in instead of letting the page silently fail.
-  useEffect(() => {
-    if (sessionError === "RefreshAccessTokenError") {
-      spotifyLogin("/home");
-    }
-  }, [sessionError]);
 
   // ---- EULA gate ----
   const checkEULA = useCallback(async () => {

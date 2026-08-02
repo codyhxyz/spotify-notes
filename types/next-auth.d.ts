@@ -1,11 +1,11 @@
 import "next-auth";
 import "next-auth/jwt";
 
-// The Spotify access token deliberately does NOT live on Session. It is read
-// server-side only via `getToken()` from the JWT cookie (see lib/spotify.ts).
+// Neither the session nor the JWT carries a Spotify token. The cookie holds
+// identity only; the access/refresh tokens live in the spotify_accounts table
+// so the server can refresh them at the point of use (see lib/spotify.ts).
 declare module "next-auth" {
   interface Session {
-    error?: string;
     user: {
       id?: string;
       name?: string | null;
@@ -18,9 +18,5 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     spotifyUserId?: string;
-    accessToken?: string;
-    refreshToken?: string;
-    expiresAt?: number;
-    error?: string;
   }
 }

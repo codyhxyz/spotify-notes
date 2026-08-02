@@ -83,7 +83,7 @@ function snippetAround(text: string, q: string, max = 180): string {
 }
 
 export default function Library() {
-  const { status, data: session } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   const [theme, setTheme] = useState<Theme>("rose");
@@ -97,8 +97,6 @@ export default function Library() {
   const [hoverArt, setHoverArt] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const sessionError = (session as { error?: string } | null)?.error;
-
   useEffect(() => {
     const t = loadTheme();
     setTheme(t);
@@ -108,10 +106,6 @@ export default function Library() {
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/");
   }, [status, router]);
-
-  useEffect(() => {
-    if (sessionError === "RefreshAccessTokenError") spotifyLogin("/home/library");
-  }, [sessionError]);
 
   // Initial page load.
   useEffect(() => {

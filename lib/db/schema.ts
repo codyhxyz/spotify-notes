@@ -15,6 +15,22 @@ export const users = pgTable("users", {
     .defaultNow(),
 });
 
+// Spotify OAuth tokens, one row per user. These deliberately do NOT live in
+// the session cookie: a cookie is a per-browser snapshot that only Auth.js can
+// rewrite, so a token stored there goes stale an hour after sign-in and can't
+// be refreshed by the API routes that actually use it. See lib/spotify.ts.
+export const spotifyAccounts = pgTable("spotify_accounts", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.userId, { onDelete: "cascade" }),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const notes = pgTable(
   "notes",
   {

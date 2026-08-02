@@ -58,6 +58,7 @@ Apply the schema. Migrations are plain SQL files; run them in numbered order:
 ```bash
 psql "$DATABASE_URL" -f migrations/001_initial.sql
 psql "$DATABASE_URL" -f migrations/002_track_metadata.sql
+psql "$DATABASE_URL" -f migrations/003_spotify_accounts.sql
 ```
 
 (Or paste the contents of each into the Neon SQL editor.)
@@ -88,10 +89,10 @@ app/
                         #   next, previous. The Spotify access token lives
                         #   only in the JWT cookie.
 lib/
-  auth.ts               # NextAuth options + Spotify token refresh
+  auth.ts               # NextAuth options; stores the Spotify grant at sign-in
   db.ts                 # Drizzle client (postgres-js)
-  db/schema.ts          # users, notes tables
-  spotify.ts            # server-side Spotify Web API helper
+  db/schema.ts          # users, spotify_accounts, notes tables
+  spotify.ts            # server-side Spotify Web API client + token refresh
   origin.ts             # Origin/Referer-based CSRF guard for write routes
 util/
   apiutils.ts           # browser wrappers around /api/spotify/*
@@ -100,6 +101,7 @@ util/
 migrations/
   001_initial.sql       # users + notes schema
   002_track_metadata.sql# denormalized track metadata + list index
+  003_spotify_accounts.sql # OAuth tokens out of the cookie, into Postgres
 proxy.ts                # gates /home/* on a NextAuth session
 ```
 
