@@ -44,9 +44,9 @@ Keep it tight. No voiceover. Music in the background is the song you're annotati
 0:21  Library view, ~12 cards. Type a search query — "boards" or whatever
       matches a real artist. Cards filter, highlight matches in real time. (~5s)
 0:26  Click a card. Drawer opens, showing the full note and ▶ Play in Spotify. (~3s)
-0:29  Click ▶ Play. Drawer closes back to the Library; in the background
-      Spotify starts playing the new track (you can see the small
-      now-playing badge update). (~3s)
+0:29  Click ▶ Play. Spotify starts the track and the app routes straight
+      back to the now-playing view, which paints in with the new album
+      art. (~3s)
 0:32  Final beat: cursor settles, end card with the URL "songnotes.codyh.xyz". (~3s)
 0:35  Done.
 ```
