@@ -600,11 +600,6 @@ export default function Home() {
                 Queued · {queuedCount}
               </span>
             )}
-            {hasTrack && (
-              <span className="chip live">
-                {isPlaying ? "Playing" : "Paused"}
-              </span>
-            )}
             <button
               className="chip"
               onClick={() => router.push("/home/library")}

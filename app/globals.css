@@ -323,15 +323,6 @@ input, textarea {
   align-items: center;
   gap: 8px;
 }
-.chip.live::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #9be3a7;
-  box-shadow: 0 0 10px #9be3a7;
-}
 .chip.danger {
   color: var(--danger);
   border-color: rgba(255, 106, 77, 0.3);

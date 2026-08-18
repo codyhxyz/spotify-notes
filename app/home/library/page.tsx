@@ -245,18 +245,25 @@ export default function Library() {
     return sorted;
   }, [rows, query, sort]);
 
-  const playThis = useCallback(async (trackId: string) => {
-    try {
-      await playTrack(trackId);
-    } catch (err) {
-      if (err instanceof AuthExpiredError) {
-        spotifyLogin("/home/library");
-        return;
+  // Starting a track from the library is a "take me to the song" gesture, so
+  // follow the playback through to the player view. Only on success — a failed
+  // play would drop you on a page still showing the previous track.
+  const playThis = useCallback(
+    async (trackId: string) => {
+      try {
+        await playTrack(trackId);
+        router.push("/home");
+      } catch (err) {
+        if (err instanceof AuthExpiredError) {
+          spotifyLogin("/home/library");
+          return;
+        }
+        console.error("[library] play failed:", err);
+        alert("Couldn't start playback. Make sure Spotify has an active device.");
       }
-      console.error("[library] play failed:", err);
-      alert("Couldn't start playback. Make sure Spotify has an active device.");
-    }
-  }, []);
+    },
+    [router]
+  );
 
   const deleteNote = useCallback(async (trackId: string) => {
     if (!confirm("Delete this note? The song stays, the words go.")) return;
@@ -326,7 +333,7 @@ export default function Library() {
                 : `${rows.length}${nextCursor ? "+" : ""} ${rows.length === 1 ? "note" : "notes"}`}
           </div>
           <h1 className="lib-title">
-            The <em>Library.</em>
+            My <em>Library.</em>
           </h1>
           <div className="lib-search-wrap">
             <svg
