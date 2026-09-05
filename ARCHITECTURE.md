@@ -105,6 +105,8 @@ State management uses **two seeds, one ref**:
 
 This is optimistic concurrency, not locking. It's the cheapest correctness guarantee that prevents the most common multi-tab footgun.
 
+`PATCH /api/notes` is the one write that deliberately skips all of that. It takes `{ notes: [ { track_id, name?, artists?, artist_urls?, image_url?, track_url?, album_url? }, … ] }`, up to 200 entries, and fills in only the metadata columns the caller actually supplied (absent, null, empty string and empty array all mean "not supplied") on rows that already belong to the caller. It never touches `note`, never touches `updated_at`, and never creates a row — unknown `track_id`s are skipped and the response `{ ok: true, updated: n }` counts the rows that existed. It exists because 171 of the notes bulk-migrated in on 2026-04-24 predate the denormalized metadata columns and render as "Unknown track" with no cover; the Fastpotify Notes desktop app looks those tracks up in bulk via Spotify's `GET /v1/tracks` and hands the results back here, so the fix lands once in Postgres and every device sees it. Leaving `updated_at` alone is the whole point: a backfill of 171 rows must not reshuffle the Library's newest-first ordering or read as 171 edits. Auth is exactly PUT's — `authenticate()` for cookie or bearer, with the same-origin check only on the cookie path.
+
 ## Timestamp chips
 
 `util/miscutils.ts` defines:

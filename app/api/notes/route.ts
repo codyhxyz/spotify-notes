@@ -179,6 +179,81 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ ok: true, updated_at: upserted[0].updatedAt });
 }
 
+// PATCH /api/notes  body: { notes: [ { track_id, name?, artists?, artist_urls?,
+//                                       image_url?, track_url?, album_url? }, ... ] }
+// Backfill-only metadata write. 171 of the notes migrated in on 2026-04-24 predate
+// the denormalized metadata columns, so they render as "Unknown track" with no
+// cover. The desktop client can look those tracks up on Spotify in bulk and hand
+// the results back here. Deliberately NOT a PUT: this never touches `note` or
+// `updated_at`, so a backfill can't reorder the Library or clobber note text.
+// Rows that don't exist are skipped, never created.
+// -> { ok: true, updated: <count of rows that existed> }
+export async function PATCH(req: NextRequest) {
+  const caller = await authenticate(req);
+  if (!caller) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  // Same rule as PUT: the Origin check only guards the ambient-credential
+  // (cookie) path. A bearer request carries no cookies for CSRF to abuse.
+  if (caller.via === "cookie") {
+    const originErr = assertSameOrigin(req);
+    if (originErr) return originErr;
+  }
+  const userId = caller.userId;
+
+  const body = (await req.json().catch(() => ({}))) as {
+    notes?: unknown;
+  };
+
+  if (!Array.isArray(body.notes)) {
+    return NextResponse.json({ error: "notes array required" }, { status: 400 });
+  }
+  if (body.notes.length > MAX_PATCH_NOTES) {
+    return NextResponse.json(
+      { error: `at most ${MAX_PATCH_NOTES} notes per request` },
+      { status: 400 }
+    );
+  }
+
+  // Last entry wins if a track id repeats, so the response count can't
+  // double-count a single row.
+  const byTrackId = new Map<string, Partial<MetaShape>>();
+  for (const raw of body.notes) {
+    if (!raw || typeof raw !== "object") continue;
+    const entry = raw as Record<string, unknown>;
+    const trackId = typeof entry.track_id === "string" ? entry.track_id.trim() : "";
+    if (!trackId) continue;
+    const meta = presentMeta(entry);
+    // Nothing usable to write: don't burn a statement on it.
+    if (Object.keys(meta).length === 0) continue;
+    byTrackId.set(trackId, meta);
+  }
+
+  if (byTrackId.size === 0) {
+    return NextResponse.json({ ok: true, updated: 0 });
+  }
+
+  // One statement per row inside a single transaction. At 200 rows max this is
+  // cheap enough that a hand-rolled bulk UPDATE ... FROM (VALUES ...) would buy
+  // nothing but a harder-to-read query.
+  const updated = await db.transaction(async (tx) => {
+    let count = 0;
+    for (const [trackId, meta] of byTrackId) {
+      const rows = await tx
+        .update(schema.notes)
+        .set(meta)
+        .where(
+          and(eq(schema.notes.userId, userId), eq(schema.notes.trackId, trackId))
+        )
+        .returning({ trackId: schema.notes.trackId });
+      count += rows.length;
+    }
+    return count;
+  });
+
+  return NextResponse.json({ ok: true, updated });
+}
+
 // DELETE /api/notes -> wipe all notes for the signed-in user.
 // Deliberately cookie-only: this is the destructive "wipe everything" button in
 // the web app's Settings modal, and no API client needs it.
@@ -227,5 +302,40 @@ function conditionalMetaSet(meta: MetaShape) {
   if (meta.albumUrl !== null) out.albumUrl = meta.albumUrl;
   // Strip the noop trackName entry if it ended up as the coalesce-self.
   if (meta.trackName === null) delete out.trackName;
+  return out;
+}
+
+// Cap on a single PATCH body. Two hundred is the same ceiling /api/notes/list
+// accepts as a page size, so a client can backfill exactly what it just read.
+const MAX_PATCH_NOTES = 200;
+
+// Pull the metadata fields a PATCH entry actually supplied. Absent, null, empty
+// strings and empty arrays are all "not supplied" — PATCH only ever fills a
+// column in, it never blanks one out.
+function presentMeta(entry: Record<string, unknown>): Partial<MetaShape> {
+  const out: Partial<MetaShape> = {};
+  const str = (v: unknown): string | null => {
+    if (typeof v !== "string") return null;
+    const trimmed = v.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  };
+  const list = (v: unknown): string[] | null => {
+    if (!Array.isArray(v)) return null;
+    const vals = v.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+    return vals.length > 0 ? vals : null;
+  };
+
+  const name = str(entry.name);
+  if (name) out.trackName = name;
+  const artists = list(entry.artists);
+  if (artists) out.artists = artists;
+  const artistUrls = list(entry.artist_urls);
+  if (artistUrls) out.artistUrls = artistUrls;
+  const imageUrl = str(entry.image_url);
+  if (imageUrl) out.imageUrl = imageUrl;
+  const trackUrl = str(entry.track_url);
+  if (trackUrl) out.trackUrl = trackUrl;
+  const albumUrl = str(entry.album_url);
+  if (albumUrl) out.albumUrl = albumUrl;
   return out;
 }
