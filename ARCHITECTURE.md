@@ -32,6 +32,7 @@ Single Next.js 16 App Router app deployed to Vercel, backed by Neon Postgres via
 - **Production Spotify app status**: the live Spotify app is in production mode. Do not diagnose `songnotes.codyh.xyz` OAuth failures as Spotify development-mode allowlist/test-user/quota-extension problems.
 - **OAuth diagnostics**: broad Auth.js debug logging stays off in production because it can include provider secrets/tokens. Instead, `app/api/auth/[...nextauth]/route.ts` logs sanitized callback failures as `[spotify-oauth-callback-error]` (Spotify returned `error`/`error_description`) or `[spotify-oauth-callback-missing-pkce-cookie]` (code present but PKCE verifier cookie absent). `lib/auth.ts` also preserves sanitized Spotify `OAuthCallbackError` metadata as `[auth][spotify-oauth-provider-error]`.
 - **First sign-in**: an `events.signIn` hook upserts a row into the `users` table keyed by the Spotify user id (`ON CONFLICT DO NOTHING` so we don't clobber an existing `accepted_eula` value).
+- **Bearer tokens for API clients**: the Fastpotify Notes desktop app has no browser session, only a Spotify Web API access token, so `/api/notes` and `/api/notes/list` also accept `Authorization: Bearer <spotify access token>`. `lib/request-auth.ts` resolves it by calling Spotify's `GET /v1/me` and taking `id` as the user id, memoizing successful verifications for 10 minutes in a bounded module-level map keyed by `sha256(token)` (per-instance and short-lived on Vercel, which is fine — a cold instance just pays one extra `/v1/me` call). A bearer header is never allowed to fall back to the cookie session, so a junk bearer can't be used to skip the same-origin check; that check runs only when the caller authenticated by cookie, since a bearer request carries no ambient credentials for CSRF to abuse. The security consequence is explicit: anyone holding the user's Spotify access token can read and write that user's notes — the same trust the app already places in that token.
 
 ## Spotify proxy
 
@@ -140,6 +141,7 @@ app/
   twitter-image.tsx        re-exports OG image for Twitter cards
 lib/
   auth.ts                  Auth.js config; stores the Spotify grant at sign-in
+  request-auth.ts          cookie session OR Spotify bearer token -> user id
   db.ts, db/schema.ts      Drizzle client + schema
   spotify.ts               server-side Spotify Web API client + token refresh
 util/

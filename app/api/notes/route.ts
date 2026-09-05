@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
+import { authenticate } from "@/lib/request-auth";
 import { assertSameOrigin } from "@/lib/origin";
 
 export const runtime = "nodejs";
@@ -10,10 +11,12 @@ export const dynamic = "force-dynamic";
 // GET /api/notes?track_id=...
 // -> { note, updated_at, name, artists, artist_urls, image_url, track_url, album_url } | { note: null }
 export async function GET(req: NextRequest) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  // Cookie session (web app) or Spotify bearer token (desktop app).
+  const caller = await authenticate(req);
+  if (!caller) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const userId = caller.userId;
   const trackId = req.nextUrl.searchParams.get("track_id");
   if (!trackId) {
     return NextResponse.json({ error: "track_id required" }, { status: 400 });
@@ -56,13 +59,18 @@ export async function GET(req: NextRequest) {
 // Returns { ok: true, updated_at } or { error: "stale", current_updated_at } when
 // expected_updated_at is provided and doesn't match the row in the DB.
 export async function PUT(req: NextRequest) {
-  const originErr = assertSameOrigin(req);
-  if (originErr) return originErr;
-
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const caller = await authenticate(req);
+  if (!caller) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  // CSRF only applies to the ambient-credential path. A bearer request carries
+  // no cookies, so a hostile page can't make the browser send one on the
+  // user's behalf, and there is nothing for an Origin check to protect.
+  if (caller.via === "cookie") {
+    const originErr = assertSameOrigin(req);
+    if (originErr) return originErr;
+  }
+  const userId = caller.userId;
 
   const body = (await req.json().catch(() => ({}))) as {
     track_id?: string;
@@ -171,7 +179,9 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ ok: true, updated_at: upserted[0].updatedAt });
 }
 
-// DELETE /api/notes -> wipe all notes for the signed-in user
+// DELETE /api/notes -> wipe all notes for the signed-in user.
+// Deliberately cookie-only: this is the destructive "wipe everything" button in
+// the web app's Settings modal, and no API client needs it.
 export async function DELETE(req: NextRequest) {
   const originErr = assertSameOrigin(req);
   if (originErr) return originErr;

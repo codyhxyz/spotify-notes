@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, lt, ne } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
-import { getSessionUserId } from "@/lib/session";
+import { authenticate } from "@/lib/request-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,10 +13,12 @@ const PAGE_SIZE = 60;
 // Library doesn't need to round-trip Spotify on every load.
 //   { notes: [...], next_cursor: <iso> | null }
 export async function GET(req: NextRequest) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  // Cookie session (web app) or Spotify bearer token (desktop app).
+  const caller = await authenticate(req);
+  if (!caller) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const userId = caller.userId;
 
   const cursor = req.nextUrl.searchParams.get("cursor");
   const limitRaw = parseInt(

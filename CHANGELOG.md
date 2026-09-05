@@ -4,6 +4,8 @@ All notable user-facing changes. Format loosely follows [Keep a Changelog](https
 
 ## Unreleased
 
+- **Your notes now sync with the Fastpotify Notes desktop app.** `/api/notes` and `/api/notes/list` accept a Spotify access token as `Authorization: Bearer …` alongside the usual browser session, so the desktop client can read and write the same notes you see on the web and on your phone. The token is checked against Spotify's own `/v1/me` and the answer is cached for ten minutes. Worth saying plainly: anyone holding your Spotify access token can read and write your notes — the same trust the app already places in that token.
+
 - **Playing a track from My Library takes you to the song.** The drawer's ▶ Play in Spotify used to start playback and leave you staring at the card grid. It now routes to the now-playing view once playback actually starts (and stays put if it doesn't, so a dead-device error can't strand you on a page showing the wrong track). The headline reads "My Library." now too — it's yours, not a public archive.
 
 - **Dropped the Playing/Paused chip from the top right.** The eyebrow under the album art already says "Currently streaming" or "Paused", so the chip was saying it a second time in a smaller font.
