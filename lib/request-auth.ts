@@ -87,23 +87,52 @@ async function ensureUserRow(userId: string): Promise<void> {
     .onConflictDoNothing({ target: schema.users.userId });
 }
 
+// Spotify rate-limits per app, and the desktop client authenticates with a
+// widely-shared public client id, so /v1/me answers 429 a good fraction of the
+// time with a Retry-After of a second or two. Without this the desktop app
+// would read a transient 429 as "your token is bad" and nag for a sign-in it
+// doesn't need. A successful verification is cached for ten minutes, so this
+// only bites on a cold instance.
+const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+const MAX_ATTEMPTS = 3;
+const MAX_RETRY_WAIT_MS = 2000;
+
+function retryDelayMs(res: Response): number {
+  const header = res.headers.get("retry-after");
+  const seconds = header ? Number.parseFloat(header) : NaN;
+  const wait = Number.isFinite(seconds) ? seconds * 1000 : 500;
+  return Math.min(Math.max(wait, 250), MAX_RETRY_WAIT_MS);
+}
+
+async function fetchSpotifyProfile(token: string): Promise<Response | null> {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(SPOTIFY_ME_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+    } catch {
+      // Network blip reaching Spotify. Not the caller's fault, but we can't
+      // establish identity, so the request is unauthenticated.
+      console.warn("[request-auth] spotify /v1/me unreachable");
+      return null;
+    }
+    if (res.ok || !RETRY_STATUSES.has(res.status) || attempt === MAX_ATTEMPTS) {
+      return res;
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs(res)));
+  }
+  return null;
+}
+
 async function resolveBearer(token: string): Promise<string | null> {
   const key = tokenKey(token);
   const cached = cacheGet(key);
   if (cached) return cached;
 
-  let res: Response;
-  try {
-    res = await fetch(SPOTIFY_ME_URL, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-  } catch {
-    // Network blip reaching Spotify. Not the caller's fault, but we can't
-    // establish identity, so the request is unauthenticated.
-    console.warn("[request-auth] spotify /v1/me unreachable");
-    return null;
-  }
+  const res = await fetchSpotifyProfile(token);
+  if (!res) return null;
 
   if (!res.ok) {
     // 401 is the expected "bad/expired token". Anything else we also can't
