@@ -3,13 +3,17 @@ import { Providers } from "./providers";
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 
-// Resolve the canonical site URL once. Vercel injects VERCEL_URL on every
-// deploy (preview + production); we honor it so preview links unfurl with
-// the right OG, falling back to the prod URL in any other environment.
+// Resolve the canonical site URL once. Production must always be the custom
+// domain: VERCEL_URL is set on production deploys too, and it names the
+// per-deployment *.vercel.app host, which sits behind Vercel SSO. Using it
+// made every shared link's og:image 302 to a login page, so unfurls had no
+// picture. Only previews use VERCEL_URL.
+const PROD_URL = "https://songnotes.codyh.xyz";
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-  "https://songnotes.codyh.xyz";
+  (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : PROD_URL);
 
 const TITLE = "My Song Notes";
 const DESCRIPTION =
@@ -20,6 +24,9 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   applicationName: TITLE,
+  // The landing page is the only public page; /home and /share are behind
+  // sign-in, so pointing everything at "/" is correct.
+  alternates: { canonical: "/" },
   authors: [{ name: "Cody Hergenroeder", url: "https://codyh.xyz" }],
   // app/opengraph-image.tsx is auto-discovered by Next and slotted into
   // openGraph.images; same story for app/twitter-image.tsx. We don't repeat
